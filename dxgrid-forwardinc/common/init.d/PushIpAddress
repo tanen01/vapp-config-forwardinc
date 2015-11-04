@@ -1,6 +1,7 @@
 echo "[*] Pushing IP address to etcd"
 
 ETCD_SERVICE=http://dxgrid-discovery:2379
+IPPUSHED=/solution/.ippushed
 
 # Get IP addr
 HOSTNAME=`hostname`
@@ -24,3 +25,5 @@ while [ True ]; do
 		sleep 5
 	fi
 done
+
+touch ${IPPUSHED}

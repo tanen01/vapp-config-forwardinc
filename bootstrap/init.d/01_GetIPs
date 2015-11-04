@@ -10,6 +10,13 @@ set +e
 
 ETCD_SERVICE=http://dxgrid-discovery:2379
 EXPECTED=4
+IPPUSHED=/solution/.ippushed
+
+# Wait for .ippushed to exist
+while [ ! -e "${IPPUSHED}" ]; do
+  echo "[*] Waiting 2 seconds for existence of: ${IPPUSHED}"
+  sleep 5
+done
 
 # Wait for DSAs to register their IP addresses in etcd
 while [ True ]; do
