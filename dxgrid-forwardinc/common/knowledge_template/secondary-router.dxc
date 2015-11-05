@@ -1,0 +1,17 @@
+# CA DXserver/config/knowledge/
+#
+# Knowledge configuration file written by dxnewdsa
+#
+# Refer to the Admin Guide for the format of the set dsa command.
+
+set dsa "secondary-router" =
+{
+    prefix        = <>
+    dsa-name      = <cn "secondary-router">
+    dsa-password  = "secret"
+    address       = tcp "$SECONDARY_ROUTER_DSA_IP" port 1389
+    disp-psap     = DISP
+    snmp-port     = 1389
+    console-port  = 1234
+    trust-flags   = trust-conveyed-originator, trust-dsa-triggered-operations
+};
