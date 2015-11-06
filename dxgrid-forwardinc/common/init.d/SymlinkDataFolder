@@ -4,4 +4,5 @@ if [ -d $DXHOME/data ] ; then
 	rm -r -f $DXHOME/data
 fi
 
-ln -s /data $DXHOME/data
+mkdir -p /storage/data
+ln -s /storage/data $DXHOME/data

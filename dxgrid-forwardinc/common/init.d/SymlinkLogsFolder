@@ -4,4 +4,5 @@ if [ -d $DXHOME/logs ] ; then
 	rm -r -f $DXHOME/logs
 fi
 
-ln -s /logs $DXHOME/logs
+mkdir -p /storage/logs
+ln -s /storage/logs $DXHOME/logs
