@@ -14,4 +14,5 @@ set dsa "secondary-data" =
     snmp-port     = 2389
     console-port  = 2345
     dsa-flags     = multi-write, load-share, no-service-while-recovering
+    trust-flags   = allow-check-password
 };
