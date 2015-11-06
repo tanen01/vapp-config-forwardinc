@@ -4,7 +4,7 @@ ETCD_SERVICE=http://dxgrid-discovery:2379
 
 # Get IP addr
 HOSTNAME=`hostname`
-ADDRESS=`grep $HOSTNAME /etc/hosts | awk '{print $1}'`
+ADDRESS=`grep $HOSTNAME /etc/hosts | awk '{print $1}' | uniq`
 
 echo "[*] Using $ADDRESS for IP address"
 

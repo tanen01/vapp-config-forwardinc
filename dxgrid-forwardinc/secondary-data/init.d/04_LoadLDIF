@@ -3,6 +3,9 @@ echo "[*] Loading ldif file"
 DATAVOL=/solution/$CONFIG/../common/ldifs
 LDIFFILE=forwardinc.ldif
 
-mkdir -p $DXHOME/data
-dxloaddb -s secondary-data $DATAVOL/$LDIFFILE
-dxdisp primary-data
+if [ -e $DXHOME/data/secondary-data.db ]; then
+	echo "Data file already exists, skipping loading of ldif file"
+else
+	dxloaddb -s secondary-data $DATAVOL/$LDIFFILE
+	dxdisp primary-data
+fi
