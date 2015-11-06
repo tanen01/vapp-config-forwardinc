@@ -19,19 +19,14 @@ while [ True ]; do
 	SECONDARY_ROUTER_DSA_IP=`echo $SECONDARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
 	SECONDARY_DATA_DSA_IP=$SECONDARY_ROUTER_DSA_IP
 
-	KNOWLEDGE_TEMPLATE_DIR=/solution/dxgrid-forwardinc/common/knowledge_template
 	KNOWLEDGE_DIR=/solution/dxgrid-forwardinc/common/knowledge
 
-	# Overwrite the common knowledge folder
-	echo "Overwritting the common knowledge folder with the original ones..."
-	cp -r $KNOWLEDGE_TEMPLATE_DIR/* $KNOWLEDGE_DIR
-
 	# Replace IP addresses
-	sed -i "s/\$PRIMARY_ROUTER_DSA_IP/$PRIMARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-	sed -i "s/\$PRIMARY_DATA_DSA_IP/$PRIMARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
+	sed -i "s/[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}/$PRIMARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
+	sed -i "s/[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}/$PRIMARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
 
-	sed -i "s/\$SECONDARY_ROUTER_DSA_IP/$SECONDARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-	sed -i "s/\$SECONDARY_DATA_DSA_IP/$SECONDARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
+	sed -i "s/[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}/$SECONDARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
+	sed -i "s/[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}/$SECONDARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
 
 	echo "[*] Updated knowledge files:"
 	cat $KNOWLEDGE_DIR/*
