@@ -1,17 +1,15 @@
 echo "[*] Running 'getIPs'"
 
 set +e
-# Poll etcd for the following 4 DSA IP addresses under dxgrid-forwardinc
+# Poll etcd for the following 2 Pod IP addresses under dxgrid-forwardinc
 #
-# primary-router
-# primary-data
-# secondary-router
-# secondary-data
+# primary
+# secondary
 
 ETCD_SERVICE=http://dxgrid-discovery:2379
-EXPECTED=4
+EXPECTED=2
 
-# Wait for DSAs to register their IP addresses in etcd
+# Wait for IP addresses to appear in etcd
 while [ True ]; do
 
 #	set +e
@@ -27,26 +25,24 @@ while [ True ]; do
 	echo "[*] Curl returned:"
 	echo $DXGRID_DEMO_JSON
 
-	DSA_COUNT=`echo $DXGRID_DEMO_JSON | tr ' ' '\n' | wc -l`
+	POD_COUNT=`echo $DXGRID_DEMO_JSON | tr ' ' '\n' | wc -l`
 
-	echo "[*] Polling etcd. Expecting $EXPECTED. Detected $DSA_COUNT"
+	echo "[*] Polling etcd. Expecting $EXPECTED. Detected $POD_COUNT"
 
-	if [ "4" -eq "$DSA_COUNT" ]; then
+	if [ "$EXPECTED" -eq "$POD_COUNT" ]; then
 		break;
 	fi
 
 	sleep 5
 done
 
-# Get the JSON formatted data from etcd for each DSA
-PRIMARY_ROUTER_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/primary-router`
-PRIMARY_DATA_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/primary-data`
-SECONDARY_ROUTER_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/secondary-router`
-SECONDARY_DATA_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/secondary-data`
+# Get the JSON formatted data from etcd for each Pod
+PRIMARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/primary`
+SECONDARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/secondary`
 
 # Obtain the IP addresses from the JSON string
-PRIMARY_ROUTER_DSA_IP=`echo $PRIMARY_ROUTER_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-PRIMARY_DATA_DSA_IP=`echo $PRIMARY_DATA_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-SECONDARY_ROUTER_DSA_IP=`echo $SECONDARY_ROUTER_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-SECONDARY_DATA_DSA_IP=`echo $SECONDARY_DATA_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
+PRIMARY_ROUTER_DSA_IP=`echo $PRIMARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
+PRIMARY_DATA_DSA_IP=$PRIMARY_ROUTER_DSA_IP
+SECONDARY_ROUTER_DSA_IP=`echo $SECONDARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
+SECONDARY_DATA_DSA_IP=$SECONDARY_ROUTER_DSA_IP
 
