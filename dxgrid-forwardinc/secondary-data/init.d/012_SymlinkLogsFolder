@@ -1,1 +1,8 @@
-../../common/init.d/SymlinkLogsFolder
+echo "[*] Running SymlinkLogsFolder"
+
+if [ -d $DXHOME/logs ] ; then
+	rm -r -f $DXHOME/logs
+fi
+
+mkdir -p /storage/secondary-data/logs
+ln -s /storage/secondary-data/logs $DXHOME/logs
