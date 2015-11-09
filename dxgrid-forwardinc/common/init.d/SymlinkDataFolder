@@ -1,8 +1,0 @@
-echo "[*] Running SymlinkDataFolder"
-
-if [ -d $DXHOME/data ] ; then
-	rm -r -f $DXHOME/data
-fi
-
-mkdir -p /storage/data
-ln -s /storage/data $DXHOME/data

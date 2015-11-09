@@ -1,1 +1,8 @@
-../../common/init.d/SymlinkDataFolder
+echo "[*] Running SymlinkDataFolder"
+
+if [ -d $DXHOME/data ] ; then
+	rm -r -f $DXHOME/data
+fi
+
+mkdir -p /storage/primary-data/data
+ln -s /storage/primary-data/data $DXHOME/data
