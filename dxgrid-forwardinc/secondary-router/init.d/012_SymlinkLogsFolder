@@ -4,5 +4,5 @@ if [ -d $DXHOME/logs ] ; then
 	rm -r -f $DXHOME/logs
 fi
 
-mkdir -p /storage/secondary-router/logs
-ln -s /storage/secondary-router/logs $DXHOME/logs
+mkdir -p "/storage/${KUBE_NAMESPACE}/secondary-router/logs"
+ln -s "/storage/${KUBE_NAMESPACE}/secondary-router/logs" $DXHOME/logs
