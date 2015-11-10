@@ -4,5 +4,5 @@ if [ -d $DXHOME/data ] ; then
 	rm -r -f $DXHOME/data
 fi
 
-mkdir -p /storage/secondary-data/data
-ln -s /storage/secondary-data/data $DXHOME/data
+mkdir -p "/storage/${KUBE_NAMESPACE}/secondary-data/data"
+ln -s "/storage/${KUBE_NAMESPACE}/secondary-data/data" $DXHOME/data
