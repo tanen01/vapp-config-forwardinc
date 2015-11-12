@@ -1,0 +1,528 @@
+{
+  "kind": "Template",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "dir-12-0-15-ga-forwardinc",
+    "creationTimestamp": null,
+    "namespace": "dir-12-0-15-ga",
+    "annotations": {
+      "description": "CA Directory 12.0.15.ga ForwardInc"
+    }
+  },
+  "objects": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "${SOLUTION_NAMESPACE}"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ReplicationController",
+      "metadata": {
+        "annotations": {
+          "description": "JXWeb Replication Controller"
+        },
+        "labels": {
+          "ca.com/jxweb-12-0-15-ga": "web"
+        },
+        "name": "jxweb-rc"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "ca.com/jxweb-12-0-15-ga": "web"
+        },
+        "template": {
+          "metadata": {
+            "annotations": {
+              "description": "JXWeb Pod"
+            },
+            "labels": {
+              "ca.com/jxweb-12-0-15-ga": "web"
+            },
+            "name": "web"
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "store.vapp-security.solutions/directory/jxweb:latest",
+                "name": "web",
+                "env": [
+                  {
+                    "name": "SESSION_PATH",
+                    "value": "/${SOLUTION_NAMESPACE}/jxweb/"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 9090
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "annotations": {
+          "ca.com/cluster-public-url": "/${SOLUTION_NAMESPACE}/jxweb/ConnectPageServlet?host=ldap&port=389&baseDN=dc=forwardinc,dc=ca&userDN=uid=superuser,ou=users,ou=northamerica,dc=forwardinc,dc=ca",
+          "ca.com/cluster-public-urltext": "UI",
+          "ca.com/cluster-public-urlpath": "/${SOLUTION_NAMESPACE}/jxweb",
+          "ca.com/cluster-public-urlpath-backend": "/jxweb",
+          "description": "Public service to expose JXWeb UI"
+        },
+        "labels": {
+          "ca.com/cluster-public-service": "true"
+        },
+        "name": "jxweb"
+      },
+      "spec": {
+        "ports": [
+          {
+            "port": 80,
+            "targetPort": 9090
+          }
+        ],
+        "selector": {
+          "ca.com/jxweb-12-0-15-ga": "web"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ReplicationController",
+      "metadata": {
+        "name": "dxgrid-primary-rc",
+        "labels": {
+          "dxgrid": "primary"
+        },
+        "annotations": {
+          "description": "dxgrid primary Replication Controller"
+        }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "dxgrid": "primary",
+          "provides": "ldap"
+        },
+        "template": {
+          "metadata": {
+            "name": "dxgrid-primary",
+            "labels": {
+              "dxgrid": "primary",
+              "provides": "ldap"
+            },
+            "annotations": {
+              "description": "dxgrid primary Pod"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Always",
+            "dnsPolicy": "ClusterFirst",
+            "volumes": [
+              {
+                "name": "dxgrid-configsvc",
+                "source": {
+                  "emptyDir": {}
+                }
+              },
+              {
+                "name": "primary-volume",
+                "persistentVolumeClaim": {
+                  "claimName": "pvc-storage"
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "dxgrid-router",
+                "image": "store.vapp-security.solutions/directory/dxgrid:12.0.15.ga",
+                "env": [
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/primary-router"
+                  },
+                  {
+                    "name": "KUBE_NAMESPACE",
+                    "value": "${SOLUTION_NAMESPACE}"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 1389
+                  }
+                ],
+                "readinessProbe": {
+                  "tcpSocket": {
+                    "port": 1389
+                  },
+                  "initialDelaySeconds": 10
+                },
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  },
+                  {
+                    "name": "primary-volume",
+                    "mountPath": "/storage"
+                  }
+                ]
+              },
+              {
+                "name": "dxgrid-data",
+                "image": "store.vapp-security.solutions/directory/dxgrid:12.0.15.ga",
+                "env": [
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/primary-data"
+                  },
+                  {
+                    "name": "KUBE_NAMESPACE",
+                    "value": "${SOLUTION_NAMESPACE}"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 2389
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  },
+                  {
+                    "name": "primary-volume",
+                    "mountPath": "/storage"
+                  }
+                ]
+              },
+              {
+                "name": "dxgrid-configsvc",
+                "image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+                "env": [
+                  {
+                    "name": "GITHUB_TOKEN",
+                    "value": "${OAUTH_TOKEN}"
+                  },
+                  {
+                    "name": "SOURCE",
+                    "value": "${SOLUTION_CONFIGURATION}"
+                  },
+                  {
+                    "name": "DESTINATION",
+                    "value": "/solution"
+                  },
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/primary"
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ReplicationController",
+      "metadata": {
+        "name": "dxgrid-secondary-rc",
+        "labels": {
+          "dxgrid": "secondary"
+        },
+        "annotations": {
+          "description": "dxgrid secondary Replication Controller"
+        }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "dxgrid": "secondary",
+          "provides": "ldap"
+        },
+        "template": {
+          "metadata": {
+            "name": "dxgrid-secondary",
+            "labels": {
+              "dxgrid": "secondary",
+              "provides": "ldap"
+            },
+            "annotations": {
+              "description": "dxgrid secondary Pod"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Always",
+            "dnsPolicy": "ClusterFirst",
+            "volumes": [
+              {
+                "name": "dxgrid-configsvc",
+                "source": {
+                  "emptyDir": {}
+                }
+              },
+              {
+                "name": "secondary-volume",
+                "persistentVolumeClaim": {
+                  "claimName": "pvc-storage"
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "dxgrid-router",
+                "image": "store.vapp-security.solutions/directory/dxgrid:12.0.15.ga",
+                "env": [
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/secondary-router"
+                  },
+                  {
+                    "name": "KUBE_NAMESPACE",
+                    "value": "${SOLUTION_NAMESPACE}"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 1389
+                  }
+                ],
+                "readinessProbe": {
+                  "tcpSocket": {
+                    "port": 1389
+                  },
+                  "initialDelaySeconds": 10
+                },
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  },
+                  {
+                    "name": "secondary-volume",
+                    "mountPath": "/storage"
+                  }
+                ]
+              },
+              {
+                "name": "dxgrid-data",
+                "image": "store.vapp-security.solutions/directory/dxgrid:12.0.15.ga",
+                "env": [
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/secondary-data"
+                  },
+                  {
+                    "name": "KUBE_NAMESPACE",
+                    "value": "${SOLUTION_NAMESPACE}"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 2389
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  },
+                  {
+                    "name": "secondary-volume",
+                    "mountPath": "/storage"
+                  }
+                ]
+              },
+              {
+                "name": "dxgrid-configsvc",
+                "image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+                "env": [
+                  {
+                    "name": "GITHUB_TOKEN",
+                    "value": "${OAUTH_TOKEN}"
+                  },
+                  {
+                    "name": "SOURCE",
+                    "value": "${SOLUTION_CONFIGURATION}"
+                  },
+                  {
+                    "name": "DESTINATION",
+                    "value": "/solution"
+                  },
+                  {
+                    "name": "CONFIG",
+                    "value": "dxgrid-forwardinc/secondary"
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "dxgrid-configsvc",
+                    "mountPath": "/solution"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ReplicationController",
+      "metadata": {
+        "name": "dxgrid-discovery",
+        "labels": {
+          "ca.com/dir-12-0-15-ga": "2015-04-21"
+        },
+        "annotations": {
+          "description": "dxgrid Discovery Replication Controller"
+        }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "ca.com/dir-12-0-15-ga": "2015-04-21",
+          "discovery": "bootstrap"
+        },
+        "template": {
+          "metadata": {
+            "name": "dxgrid-discovery",
+            "labels": {
+              "ca.com/dir-12-0-15-ga": "2015-04-21",
+              "discovery": "bootstrap"
+            },
+            "annotations": {
+              "description": "dxgrid Discovery Pod"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Always",
+            "dnsPolicy": "ClusterFirst",
+            "containers": [
+              {
+                "name": "dxgrid-bootstrap",
+                "image": "quay.io/coreos/etcd:v2.0.10",
+                "env": [
+                  {
+                    "name": "ETCD_ADDR",
+                    "value": "0.0.0.0:2379"
+                  },
+                  {
+                    "name": "ETCD_NAME",
+                    "value": "dxgrid-bootstrap"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 2379
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/v2/keys",
+                    "port": 2379
+                  },
+                  "initialDelaySeconds": 10
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "ldap",
+        "annotations": {
+          "description": "Public service to CA Directory"
+        }
+      },
+      "spec": {
+        "ports": [
+          {
+            "port": 389,
+            "targetPort": 1389
+          }
+        ],
+        "sessionAffinity": "ClientIP",
+        "selector": {
+          "provides": "ldap"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "dxgrid-discovery",
+        "annotations": {
+          "description": "Private service to CA Directory discovery"
+        },
+        "labels": {
+          "ca.com/dir-12-0-15-ga": "2015-04-21"
+        }
+      },
+      "spec": {
+        "ports": [
+          {
+            "port": 2379,
+            "targetPort": 2379
+          }
+        ],
+        "selector": {
+          "ca.com/dir-12-0-15-ga": "2015-04-21",
+          "discovery": "bootstrap"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "pvc-storage"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        }
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration.",
+      "name": "OAUTH_TOKEN",
+      "value": ""
+    },
+    {
+      "description": "The URL of your configuration.  Change this URL to use a custom configuration.",
+      "name": "SOLUTION_CONFIGURATION",
+      "value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.15.zip"
+    }
+  ]
+}
