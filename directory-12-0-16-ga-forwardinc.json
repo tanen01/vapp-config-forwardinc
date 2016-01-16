@@ -25,14 +25,14 @@
           "description": "JXWeb Replication Controller"
         },
         "labels": {
-          "ca.com/jxweb-12-0-15-ga": "web"
+          "ca.com/jxweb-12-0-16-ga": "web"
         },
         "name": "jxweb-rc"
       },
       "spec": {
         "replicas": 1,
         "selector": {
-          "ca.com/jxweb-12-0-15-ga": "web"
+          "ca.com/jxweb-12-0-16-ga": "web"
         },
         "template": {
           "metadata": {
@@ -40,7 +40,7 @@
               "description": "JXWeb Pod"
             },
             "labels": {
-              "ca.com/jxweb-12-0-15-ga": "web"
+              "ca.com/jxweb-12-0-16-ga": "web"
             },
             "name": "web"
           },
