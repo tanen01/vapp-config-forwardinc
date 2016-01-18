@@ -490,7 +490,7 @@
           }
         ],
         "selector": {
-          "ca.com/dir-12-0-16-latest "2015-07-26",
+          "ca.com/dir-12-0-16-ga": "2015-07-26",
           "discovery": "bootstrap"
         }
       }
