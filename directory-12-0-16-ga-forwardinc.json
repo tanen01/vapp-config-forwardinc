@@ -324,7 +324,7 @@
               },
               {
                 "name": "dxgrid-data",
-                "image": "store.vapp-security.solutions/directory/12.0.16.ga",
+                "image": "store.vapp-security.solutions/directory/dxgrid:12.0.16.ga",
                 "env": [
                   {
                     "name": "CONFIG",
