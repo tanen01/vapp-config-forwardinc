@@ -53,7 +53,7 @@
 				},
 				"spec": {
 					"containers": [{
-						"image": "dev-store.vapp-security.solutions/directory/jxweb:latest",
+						"image": "store.vapp-security.solutions/directory/jxweb:latest",
 						"name": "web",
 						"env": [{
 							"name": "SESSION_PATH",
@@ -62,9 +62,6 @@
 						"ports": [{
 							"containerPort": 9090
 						}]
-					}],
-					"imagePullSecrets": [{
-						"name": "ca-dev-registry"
 					}],
 					"dnsPolicy": "ClusterFirst",
 					"restartPolicy": "Always"
@@ -81,6 +78,7 @@
 				"ca.com/cluster-public-urltext": "UI",
 				"ca.com/cluster-public-urlpath": "/${SOLUTION_NAMESPACE}/jxweb",
 				"ca.com/cluster-public-urlpath-backend": "/jxweb",
+				"ca.com/cluster-public-log-url": "/app/kibana#/discover?_a=(index:'cadirectory-${SOLUTION_NAMESPACE}-*')",
 				"description": "Public service to expose JXWeb UI"
 			},
 			"labels": {
@@ -140,12 +138,9 @@
 							"claimName": "pvc-storage"
 						}
 					}],
-					"imagePullSecrets": [{
-						"name": "ca-dev-registry"
-					}],
 					"containers": [{
 						"name": "dxgrid-data",
-						"image": "dev-store.vapp-security.solutions/directory/dxgrid:12.0.17",
+						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17",
 						"env": [{
 							"name": "CONFIG",
 							"value": "primary-data"
@@ -189,7 +184,7 @@
 					},
 					{
 						"name": "dxgrid-configsvc",
-						"image": "dev-store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+						"image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
 						"imagePullPolicy": "IfNotPresent",
 						"env": [{
 							"name": "KUBE_NAMESPACE",
@@ -222,6 +217,35 @@
 						{
 							"name": "dxgrid-status-vol",
 							"mountPath": "/solution_status"
+						}]
+					},
+					{
+						"name": "dxgrid-fluentd",
+						"image": "store.vapp-security.solutions/vapp/fluentd:latest",
+						"env": [{
+							"name": "CONFIG",
+							"value": "primary"
+						},
+						{
+							"name": "KUBE_NAMESPACE",
+							"value": "${SOLUTION_NAMESPACE}"
+						},
+						{
+							"name": "ELASTICSEARCH_HOST",
+							"value": "elasticsearch-logging.cluster"
+						},
+						{
+							"name": "ELASTICSEARCH_PORT",
+							"value": "9200"
+						}],
+						"args": [],
+						"volumeMounts": [{
+							"name": "primary-volume",
+							"mountPath": "/storage"
+						},
+						{
+							"name": "dxgrid-solution-vol",
+							"mountPath": "/solution"
 						}]
 					}]
 				}
@@ -282,7 +306,7 @@
 					},
 					{
 						"name": "discovery-configsvc",
-						"image": "dev-store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+						"image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
 						"imagePullPolicy": "IfNotPresent",
 						"env": [{
 							"name": "KUBE_NAMESPACE",
@@ -366,16 +390,16 @@
 	"parameters": [{
 		"description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration.",
 		"name": "OAUTH_TOKEN",
-		"value": "aa7619131a1094478b782cf4bc56a975e234c5c4"
+		"value": ""
 	},
 	{
 		"description": "URL of dxgrid configuration.",
 		"name": "DXGRID_SOLUTION_CONFIGURATION",
-		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-scalable/archive/master.zip"
+		"value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.17.zip"
 	},
 	{
 		"description": "URL of dxgrid-discovery configuration.",
 		"name": "DISCOVERY_SOLUTION_CONFIGURATION",
-		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-discovery-scalable/archive/master.zip"
+		"value": "https://github.com/ca-directory/vapp-config-forwardinc-discovery/archive/12.0.17.zip"
 	}]
 }
