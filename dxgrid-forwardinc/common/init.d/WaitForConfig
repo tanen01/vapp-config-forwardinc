@@ -1,9 +1,0 @@
-echo "[*] Running WaitForConfig"
-
-CONFIGURED=/solution/.configured
-
-# Wait for .configured to exist
-while [ ! -e "${CONFIGURED}" ]; do
-  echo "[*] Waiting 2 seconds for existence of: ${CONFIGURED}"
-  sleep 5
-done

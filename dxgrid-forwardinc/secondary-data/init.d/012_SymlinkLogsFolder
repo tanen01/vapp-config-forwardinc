@@ -1,8 +1,0 @@
-echo "[*] Running SymlinkLogsFolder"
-
-if [ -d $DXHOME/logs ] ; then
-	rm -r -f $DXHOME/logs
-fi
-
-mkdir -p "/storage/${KUBE_NAMESPACE}/secondary-data/logs"
-ln -s "/storage/${KUBE_NAMESPACE}/secondary-data/logs" $DXHOME/logs

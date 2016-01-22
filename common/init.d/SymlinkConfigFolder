@@ -1,0 +1,4 @@
+echo "[*] Running SymlinkConfigFolder"
+ln -s /solution/$CONFIG/config $DXHOME/config
+ln -s /solution/$CONFIG/dxagent-config/gunicorn-config.py $DXHOME/dxagent/gunicorn-config.py
+ln -s /solution/$CONFIG/dxagent-config/gunicorn-logging.conf $DXHOME/dxagent/gunicorn-logging.conf

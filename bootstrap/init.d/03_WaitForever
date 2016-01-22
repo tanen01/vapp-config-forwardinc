@@ -1,43 +1,46 @@
-echo "[*] Detecting any new changes..."
+echo "[03] Detecting changes..."
 
-ETCD_SERVICE=http://dxgrid-discovery:2379
-
+waitIndex=0
+hasPendingUpdate=0
 while [ True ]; do
-
-	echo "Waiting for new changes from the ETCD service..."
-	/usr/bin/curl "$ETCD_SERVICE/v2/keys/dxgrid-forwardinc?wait=true&recursive=true"
-
-	echo "Detected new changes from the ETCD service, updating the config files..."
-
-	# Get the JSON formatted data from etcd for each Pod
-	PRIMARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/primary`
-	SECONDARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/secondary`
-
-	# Obtain the IP addresses from the JSON string
-	PRIMARY_ROUTER_DSA_IP=`echo $PRIMARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-	PRIMARY_DATA_DSA_IP=$PRIMARY_ROUTER_DSA_IP
-	SECONDARY_ROUTER_DSA_IP=`echo $SECONDARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-	SECONDARY_DATA_DSA_IP=$SECONDARY_ROUTER_DSA_IP
-
-	KNOWLEDGE_TEMPLATE_DIR=/solution/dxgrid-forwardinc/common/knowledge_template
-	KNOWLEDGE_DIR=/solution/dxgrid-forwardinc/common/knowledge
-
-	# Overwrite the common knowledge folder
-	echo "Overwritting the common knowledge folder with the original ones..."
-	cp -r $KNOWLEDGE_TEMPLATE_DIR/* $KNOWLEDGE_DIR
-
-	# Replace IP addresses
-	sed -i "s/\$PRIMARY_ROUTER_DSA_IP/$PRIMARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-	sed -i "s/\$PRIMARY_DATA_DSA_IP/$PRIMARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-
-	sed -i "s/\$SECONDARY_ROUTER_DSA_IP/$SECONDARY_ROUTER_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-	sed -i "s/\$SECONDARY_DATA_DSA_IP/$SECONDARY_DATA_DSA_IP/g" $KNOWLEDGE_DIR/*.dxc
-
-	echo "[*] Updated knowledge files:"
-	cat $KNOWLEDGE_DIR/*
-
-	touch /solution/.configured
-
+	if [ $maxIndex -gt $waitIndex ]; then
+		# maxIndex is set in ProcessConfig to the largest modifiedIndex of all nodes. On the first loop,
+		# we would expect maxIndex > waitIndex and want to wait on the larger value. This is also the
+		# case when pods are scaled up. However, if pods are scaled down then maxIndex may be lower than
+		# than before. We do not want to wait on the smaller value
+		waitIndex=$maxIndex
+	fi
+	echo "[03] Waiting for changes. waitIndex $waitIndex"
+	modNotification=$(curl -m 60 -L $ETCD_SERVICE/v2/keys/dsas?wait=true\&recursive=true\&waitIndex=$waitIndex)
+	retVal=$?
+	echo "[03] Detected changes (rc:$retVal hasPendingUpdate:$hasPendingUpdate): $modNotification"
+	
+	if [ $retVal -eq 28 ] && [ $hasPendingUpdate -eq 1 ]; then
+		# Do not process config on every etcd update. Instead flag hasPendingUpdate=1 when an update
+		# is detected. On the next curl timeout(28), check this flag and process config if needed.
+		# The idea is that we want to collapse quick successive updates into one.
+		# Otherwise a series of quick updates here may cause dxserver to fail to start. the knowledge file
+		# is continuously being updated here while dxserver tries to read it.
+		hasPendingUpdate=0
+		echo "[03] update config"
+		. /solution/bootstrap/init.d/02_ProcessConfig
+		continue
+	elif [ $retVal -eq 28 ]; then
+		# Timed out
+		continue
+	fi
+	
+	responseModifiedIndex=`echo $modNotification | jq ".node.modifiedIndex"`
+	if ! echo $responseModifiedIndex | egrep -q '^[0-9]+$'; then
+		# "modifiedIndex" not seen in the response. Assume error
+		echo "[03] error: modifiedIndex not found in update"
+		sleep 10
+		continue
+	fi
+	
+	# update detected: seen "modifiedIndex" in the response. update the next waitIndex and flag hasPendingUpdate 
+	waitIndex=`expr $waitIndex + 1`
+	hasPendingUpdate=1
 done
 
 echo "[*] Exiting"

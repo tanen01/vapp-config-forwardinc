@@ -1,0 +1,32 @@
+echo "[*] Running '00_ProcessConfig'"
+echo "[*] CONFIG=[${CONFIG}]"
+echo "[*] ELASTICSEARCH_HOST=[${ELASTICSEARCH_HOST}]"
+echo "[*] ELASTICSEARCH_PORT=[${ELASTICSEARCH_PORT}]"
+
+TD_AGENT_CONFIG_SRC=/solution/fluentd-config/td-agent.conf
+TD_AGENT_CONFIG_DEST=/etc/td-agent/td-agent.conf
+
+WARN_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_warn_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_warn_*.log
+ALARM_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_alarm.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_alarm.log
+STATS_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_stats_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_stats_*.log
+QUERY_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_query_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_query_*.log
+
+echo "[*] WARN_LOG_FILE_PATH=[${WARN_LOG_FILE_PATH}]"
+echo "[*] ALARM_LOG_FILE_PATH=[${ALARM_LOG_FILE_PATH}]"
+echo "[*] STATS_LOG_FILE_PATH=[${STATS_LOG_FILE_PATH}]"
+echo "[*] QUERY_LOG_FILE_PATH=[${QUERY_LOG_FILE_PATH}]"
+
+# Replace the existing td-agent.conf file
+cp -f "$TD_AGENT_CONFIG_SRC" "$TD_AGENT_CONFIG_DEST"
+
+sed -i "s:\$WARN_LOG_FILE_PATH:$WARN_LOG_FILE_PATH:g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s:\$ALARM_LOG_FILE_PATH:$ALARM_LOG_FILE_PATH:g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s:\$STATS_LOG_FILE_PATH:$STATS_LOG_FILE_PATH:g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s:\$QUERY_LOG_FILE_PATH:$QUERY_LOG_FILE_PATH:g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s/\$ELASTICSEARCH_HOST/$ELASTICSEARCH_HOST/g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s/\$ELASTICSEARCH_PORT/$ELASTICSEARCH_PORT/g" "$TD_AGENT_CONFIG_DEST"
+sed -i "s/\$KUBE_NAMESPACE/$KUBE_NAMESPACE/g" "$TD_AGENT_CONFIG_DEST"
+
+echo "[*] Processed td-agent.conf file:"
+cat "$TD_AGENT_CONFIG_DEST"
+
