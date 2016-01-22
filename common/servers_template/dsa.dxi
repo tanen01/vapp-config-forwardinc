@@ -1,0 +1,25 @@
+# logging
+set warn-log = "logs/$s_warn.log";
+set stats-log = "logs/$s_stats.log";
+set query-log = "logs/$s_query.log";
+
+# schema
+source "../schema/ForwardInc.dxg";
+
+# knowledge
+clear dsas;
+source "../knowledge/dsas.dxc";
+
+# ssl
+source "../ssld/default.dxc";
+
+# replication agreements (rarely used)
+
+# multiwrite DISP recovery
+set multi-write-disp-recovery = true;
+
+# grid configuration
+set dxgrid-db-location = "data";
+set dxgrid-db-size = 10;
+set cache-index = all-attributes;
+set lookup-cache = true;

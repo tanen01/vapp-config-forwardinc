@@ -1,0 +1,381 @@
+{
+	"kind": "Template",
+	"apiVersion": "v1",
+	"metadata": {
+		"name": "dir-12-0-17-dev-forwardinc-scalable",
+		"creationTimestamp": null,
+		"namespace": "dir-12-0-17-dev-scalable",
+		"annotations": {
+			"description": "CA Directory 12.0.17.latest ForwardInc Scalable"
+		}
+	},
+	"objects": [{
+		"apiVersion": "v1",
+		"kind": "Namespace",
+		"metadata": {
+			"name": "${SOLUTION_NAMESPACE}",
+			"labels": {
+				"ca.com/recycle-secrets-on-master-bootup": "true"
+			}
+		}
+	},
+	{
+		"kind": "Secret",
+		"apiVersion": "v1",
+		"metadata": {
+			"name": "ca-dev-registry"
+		},
+		"data": {
+			".dockercfg": "ewogICJkZXYtc3RvcmUudmFwcC1zZWN1cml0eS5zb2x1dGlvbnMiOiB7CiAgICAiYXV0aCI6ICJaRzkzYm14dllXUTZZV052UzA5dk5sQnRWVXRzVURaaGVrdFNjbkpwTUZoMWN6QTJUMVJWWkVJMGIzcDFaSE5yVEdaTVFrVmFkRkpUWW1WdmJGWlBhVlpNYUZJMmVrSXZhREk0VVdkNloybGpOVEZyU2twd1JtTkxaRUpoU0haTVJ6QlBUbFZNY3pRMFluUjVXRU40YkUwM1RsazkiLAogICAgImVtYWlsIjogIiIKICB9Cn0K"
+		},
+		"type": "kubernetes.io/dockercfg"
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "ReplicationController",
+		"metadata": {
+			"name": "jxweb-rc",
+			"annotations": {
+				"description": "JXWeb Replication Controller"
+			}
+		},
+		"spec": {
+			"replicas": 1,
+			"template": {
+				"metadata": {
+					"annotations": {
+						"description": "JXWeb Pod"
+					},
+					"labels": {
+						"app": "jxweb"
+					},
+					"name": "web"
+				},
+				"spec": {
+					"containers": [{
+						"image": "dev-store.vapp-security.solutions/directory/jxweb:latest",
+						"name": "web",
+						"env": [{
+							"name": "SESSION_PATH",
+							"value": "/${SOLUTION_NAMESPACE}/jxweb/"
+						}],
+						"ports": [{
+							"containerPort": 9090
+						}]
+					}],
+					"imagePullSecrets": [{
+						"name": "ca-dev-registry"
+					}],
+					"dnsPolicy": "ClusterFirst",
+					"restartPolicy": "Always"
+				}
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "Service",
+		"metadata": {
+			"annotations": {
+				"ca.com/cluster-public-url": "/${SOLUTION_NAMESPACE}/jxweb/ConnectPageServlet?host=ldap&port=389&baseDN=dc=forwardinc,dc=ca&userDN=uid=superuser,ou=users,ou=northamerica,dc=forwardinc,dc=ca",
+				"ca.com/cluster-public-urltext": "UI",
+				"ca.com/cluster-public-urlpath": "/${SOLUTION_NAMESPACE}/jxweb",
+				"ca.com/cluster-public-urlpath-backend": "/jxweb",
+				"description": "Public service to expose JXWeb UI"
+			},
+			"labels": {
+				"ca.com/cluster-public-service": "true"
+			},
+			"name": "jxweb"
+		},
+		"spec": {
+			"ports": [{
+				"port": 80,
+				"targetPort": 9090
+			}],
+			"selector": {
+				"app": "jxweb"
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "ReplicationController",
+		"metadata": {
+			"name": "dxgrid-data-rc",
+			"annotations": {
+				"description": "dxgrid data Replication Controller"
+			}
+		},
+		"spec": {
+			"replicas": 2,
+			"template": {
+				"metadata": {
+					"name": "dxgrid-data",
+					"labels": {
+						"app": "dxgrid"
+					},
+					"annotations": {
+						"description": "dxgrid data Pod"
+					}
+				},
+				"spec": {
+					"restartPolicy": "Always",
+					"dnsPolicy": "ClusterFirst",
+					"volumes": [{
+						"name": "dxgrid-solution-vol",
+						"emptyDir": {
+							
+						}
+					},
+					{
+						"name": "dxgrid-status-vol",
+						"emptyDir": {
+							"medium": "Memory"
+						}
+					},
+					{
+						"name": "primary-volume",
+						"persistentVolumeClaim": {
+							"claimName": "pvc-storage"
+						}
+					}],
+					"imagePullSecrets": [{
+						"name": "ca-dev-registry"
+					}],
+					"containers": [{
+						"name": "dxgrid-data",
+						"image": "dev-store.vapp-security.solutions/directory/dxgrid:12.0.17",
+						"env": [{
+							"name": "CONFIG",
+							"value": "primary-data"
+						},
+						{
+							"name": "KUBE_NAMESPACE",
+							"value": "${SOLUTION_NAMESPACE}"
+						},
+						{
+							"name": "DESTINATION",
+							"value": "/solution"
+						},
+						{
+							"name": "DESTINATION_STATUS",
+							"value": "/solution_status"
+						}],
+						"ports": [{
+							"containerPort": 2389
+						},
+						{
+							"containerPort": 8443
+						}],
+						"readinessProbe": {
+							"tcpSocket": {
+								"port": 2389
+							},
+							"initialDelaySeconds": 60
+						},
+						"volumeMounts": [{
+							"name": "dxgrid-solution-vol",
+							"mountPath": "/solution"
+						},
+						{
+							"name": "dxgrid-status-vol",
+							"mountPath": "/solution_status"
+						},
+						{
+							"name": "primary-volume",
+							"mountPath": "/storage"
+						}]
+					},
+					{
+						"name": "dxgrid-configsvc",
+						"image": "dev-store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+						"imagePullPolicy": "IfNotPresent",
+						"env": [{
+							"name": "KUBE_NAMESPACE",
+							"value": "${SOLUTION_NAMESPACE}"
+						},
+						{
+							"name": "GITHUB_TOKEN",
+							"value": "${OAUTH_TOKEN}"
+						},
+						{
+							"name": "SOURCE",
+							"value": "${DXGRID_SOLUTION_CONFIGURATION}"
+						},
+						{
+							"name": "DESTINATION",
+							"value": "/solution"
+						},
+						{
+							"name": "DESTINATION_STATUS",
+							"value": "/solution_status"
+						},
+						{
+							"name": "CONFIG",
+							"value": "primary-data"
+						}],
+						"volumeMounts": [{
+							"name": "dxgrid-solution-vol",
+							"mountPath": "/solution"
+						},
+						{
+							"name": "dxgrid-status-vol",
+							"mountPath": "/solution_status"
+						}]
+					}]
+				}
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "ReplicationController",
+		"metadata": {
+			"name": "dxgrid-discovery-rc",
+			"annotations": {
+				"description": "dxgrid Discovery Replication Controller"
+			}
+		},
+		"spec": {
+			"replicas": 1,
+			"template": {
+				"metadata": {
+					"name": "dxgrid-discovery",
+					"labels": {
+						"app": "discovery"
+					},
+					"annotations": {
+						"description": "dxgrid Discovery Pod"
+					}
+				},
+				"spec": {
+					"restartPolicy": "Always",
+					"dnsPolicy": "ClusterFirst",
+					"volumes": [{
+						"name": "discovery-solution-vol",
+						"emptyDir": {
+							
+						}
+					}],
+					"containers": [{
+						"name": "dxgrid-bootstrap",
+						"image": "quay.io/coreos/etcd:v2.0.10",
+						"env": [{
+							"name": "ETCD_ADDR",
+							"value": "0.0.0.0:2379"
+						},
+						{
+							"name": "ETCD_NAME",
+							"value": "dxgrid-bootstrap"
+						}],
+						"ports": [{
+							"containerPort": 2379
+						}],
+						"readinessProbe": {
+							"httpGet": {
+								"path": "/v2/keys",
+								"port": 2379
+							},
+							"initialDelaySeconds": 10
+						}
+					},
+					{
+						"name": "discovery-configsvc",
+						"image": "dev-store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
+						"imagePullPolicy": "IfNotPresent",
+						"env": [{
+							"name": "KUBE_NAMESPACE",
+							"value": "${SOLUTION_NAMESPACE}"
+						},
+						{
+							"name": "GITHUB_TOKEN",
+							"value": "${OAUTH_TOKEN}"
+						},
+						{
+							"name": "SOURCE",
+							"value": "${DISCOVERY_SOLUTION_CONFIGURATION}"
+						},
+						{
+							"name": "DESTINATION",
+							"value": "/solution"
+						}],
+						"volumeMounts": [{
+							"name": "discovery-solution-vol",
+							"mountPath": "/solution"
+						}]
+					}]
+				}
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "Service",
+		"metadata": {
+			"name": "ldap",
+			"annotations": {
+				"description": "Public service to CA Directory"
+			}
+		},
+		"spec": {
+			"ports": [{
+				"port": 389,
+				"targetPort": 2389
+			}],
+			"sessionAffinity": "ClientIP",
+			"selector": {
+				"app": "dxgrid"
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "Service",
+		"metadata": {
+			"name": "dxgrid-discovery",
+			"annotations": {
+				"description": "Private service to CA Directory discovery"
+			}
+		},
+		"spec": {
+			"ports": [{
+				"port": 2379,
+				"targetPort": 2379
+			}],
+			"selector": {
+				"app": "discovery"
+			}
+		}
+	},
+	{
+		"apiVersion": "v1",
+		"kind": "PersistentVolumeClaim",
+		"metadata": {
+			"name": "pvc-storage"
+		},
+		"spec": {
+			"accessModes": ["ReadWriteMany"],
+			"resources": {
+				"requests": {
+					"storage": "2Gi"
+				}
+			}
+		}
+	}],
+	"parameters": [{
+		"description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration.",
+		"name": "OAUTH_TOKEN",
+		"value": "aa7619131a1094478b782cf4bc56a975e234c5c4"
+	},
+	{
+		"description": "URL of dxgrid configuration.",
+		"name": "DXGRID_SOLUTION_CONFIGURATION",
+		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-scalable/archive/master.zip"
+	},
+	{
+		"description": "URL of dxgrid-discovery configuration.",
+		"name": "DISCOVERY_SOLUTION_CONFIGURATION",
+		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-discovery-scalable/archive/master.zip"
+	}]
+}

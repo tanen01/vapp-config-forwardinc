@@ -1,0 +1,20 @@
+
+
+
+set ssl = {
+   # folder containing DSA personality certs
+   cert-dir = "config/ssld/personalities"
+
+   # trusted root CA that signed DSA certificates
+   ca-file = "config/ssld/trusted.pem"
+
+   # SSL options
+#  cipher = "ALL:!EXPORT40:!ADH:!SSLv2:!EXP:!LOW"
+#  protocol = tls                # enable TLS only (default of fips set)
+#  fips = false                   # enables FIPS 140-2 compliant encryption
+
+   # HSM options
+#  lib = "<str>"                 # path to PKCS11 library supplied by HSM vendor
+#  pin = "<str>"                 # HSM pin
+#  slot = <num>                  # slot to use for HSM based encryption
+};
