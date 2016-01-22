@@ -1,0 +1,56 @@
+ELASTICSEARCH_URL=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+INDEX_PATTERN=cadirectory-${KUBE_NAMESPACE}-*
+
+INDEX_PATTERN_PAYLOAD_1='{"title" : "'
+INDEX_PATTERN_PAYLOAD_2='",  "timeFieldName": "@timestamp"}'
+INDEX_PATTERN_PAYLOAD=${INDEX_PATTERN_PAYLOAD_1}${INDEX_PATTERN}${INDEX_PATTERN_PAYLOAD_2}
+
+echo "[*] Elasticsearch is running at ${ELASTICSEARCH_URL}"
+echo "[*] INDEX_PATTERN is ${INDEX_PATTERN}"
+echo "[*] INDEX_PATTERN_PAYLOAD is ${INDEX_PATTERN_PAYLOAD}"
+
+echo "[*] ========================================================================="
+echo "[*] check to see if elasticsearch is running and the .kibana index exists ..."
+while [ True ]; do
+
+       set +e
+       HTTP_STATUS=`curl -XHEAD --write-out "%{http_code}" --silent --output /dev/null ${ELASTICSEARCH_URL}/.kibana`
+       RETVAL=$?
+       set -e
+
+       echo "[*] RETVAL is $RETVAL"
+       echo "[*] HTTP_STATUS is $HTTP_STATUS"
+
+       if [ "$RETVAL" -eq 0 ] && [ "$HTTP_STATUS" -eq 200 ]; then
+               echo "[*] elasticsearch is running and ./kibana index exists"
+               break
+       else
+               echo "[*] elasticsearch is not running or ./kibana index does not exist"
+               sleep 5
+       fi
+
+done
+
+echo "[*] ========================================================================="
+echo "[*] check to see if index pattern exists ..."
+
+set +e
+HTTP_STATUS=`curl -XHEAD --write-out "%{http_code}" --silent --output /dev/null $ELASTICSEARCH_URL/.kibana/index-pattern/$INDEX_PATTERN`
+RETVAL=$?
+set -e
+
+echo "[*] RETVAL is $RETVAL"
+echo "[*] HTTP_STATUS is $HTTP_STATUS"
+
+if [ "$HTTP_STATUS" -ne 200 ]; then
+       echo "[*] index pattern does not exist, creating ..."
+       echo "[*] ========================================================================="
+
+       set +e
+       HTTP_STATUS=`curl -XPUT --write-out "%{http_code}" --silent --output /dev/null $ELASTICSEARCH_URL/.kibana/index-pattern/$INDEX_PATTERN -d "$INDEX_PATTERN_PAYLOAD"`
+       RETVAL=$?
+       set -e
+
+       echo "[*] RETVAL is $RETVAL"
+       echo "[*] HTTP_STATUS is $HTTP_STATUS"
+fi
