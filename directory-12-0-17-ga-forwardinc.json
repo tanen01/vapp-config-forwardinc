@@ -63,9 +63,6 @@
 							"containerPort": 9090
 						}]
 					}],
-					"imagePullSecrets": [{
-						"name": "ca-dev-registry"
-					}],
 					"dnsPolicy": "ClusterFirst",
 					"restartPolicy": "Always"
 				}
@@ -139,9 +136,6 @@
 						"persistentVolumeClaim": {
 							"claimName": "pvc-storage"
 						}
-					}],
-					"imagePullSecrets": [{
-						"name": "ca-dev-registry"
 					}],
 					"containers": [{
 						"name": "dxgrid-data",
@@ -366,16 +360,16 @@
 	"parameters": [{
 		"description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration.",
 		"name": "OAUTH_TOKEN",
-		"value": "aa7619131a1094478b782cf4bc56a975e234c5c4"
+		"value": ""
 	},
 	{
 		"description": "URL of dxgrid configuration.",
 		"name": "DXGRID_SOLUTION_CONFIGURATION",
-		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-scalable/archive/master.zip"
+		"value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.17.zip"
 	},
 	{
 		"description": "URL of dxgrid-discovery configuration.",
 		"name": "DISCOVERY_SOLUTION_CONFIGURATION",
-		"value": "https://github-isl-01.ca.com/directory/vapp-config-forwardinc-discovery-scalable/archive/master.zip"
+		"value": "https://github.com/ca-directory/vapp-config-forwardinc-discovery/archive/12.0.17.zip"
 	}]
 }
