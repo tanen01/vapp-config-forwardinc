@@ -2,11 +2,11 @@
 	"kind": "Template",
 	"apiVersion": "v1",
 	"metadata": {
-		"name": "dir-12-0-17-dev-forwardinc-scalable",
+		"name": "dir-12-0-17-ga-forwardinc",
 		"creationTimestamp": null,
-		"namespace": "dir-12-0-17-dev-scalable",
+		"namespace": "dir-12-0-17-ga-forwardinc",
 		"annotations": {
-			"description": "CA Directory 12.0.17.latest ForwardInc Scalable"
+			"description": "CA Directory 12.0.17.ga ForwardInc"
 		}
 	},
 	"objects": [{
