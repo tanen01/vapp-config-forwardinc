@@ -1,48 +1,34 @@
-echo "[*] Running 'getIPs'"
+echo "[01] Running 'getIPs'"
 
-set +e
-# Poll etcd for the following 2 Pod IP addresses under dxgrid-forwardinc
-#
-# primary
-# secondary
+set +eo pipefail
 
 ETCD_SERVICE=http://dxgrid-discovery:2379
-EXPECTED=2
 
-# Wait for IP addresses to appear in etcd
-while [ True ]; do
+# Get IP addr
+ADDRESS=`grep $HOSTNAME /etc/hosts | awk '{print $1}' | uniq`
+echo "[01] Using $ADDRESS for IP address"
 
-#	set +e
-	DXGRID_DEMO_JSON=`/usr/bin/curl -s --retry 10 -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc | grep -Po '"value":.*?[^\\\\]"'`
-	RETVAL=$?
-#	set -e
-	if [ "$RETVAL" -ne 0 ]; then
-		echo "[*] etcd not available yet"
-		sleep 5
-		continue
+echo "[01] wait for etcd to start"
+while true; do
+	curl -s -XGET $ETCD_SERVICE
+	if [ $? -eq 0 ]; then
+		break
 	fi
-
-	echo "[*] Curl returned:"
-	echo $DXGRID_DEMO_JSON
-
-	POD_COUNT=`echo $DXGRID_DEMO_JSON | tr ' ' '\n' | wc -l`
-
-	echo "[*] Polling etcd. Expecting $EXPECTED. Detected $POD_COUNT"
-
-	if [ "$EXPECTED" -eq "$POD_COUNT" ]; then
-		break;
-	fi
-
+	echo "[01] etcd not available yet"
 	sleep 5
 done
 
-# Get the JSON formatted data from etcd for each Pod
-PRIMARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/primary`
-SECONDARY_POD_JSON=`/usr/bin/curl -s -L $ETCD_SERVICE/v2/keys/dxgrid-forwardinc/secondary`
-
-# Obtain the IP addresses from the JSON string
-PRIMARY_ROUTER_DSA_IP=`echo $PRIMARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-PRIMARY_DATA_DSA_IP=$PRIMARY_ROUTER_DSA_IP
-SECONDARY_ROUTER_DSA_IP=`echo $SECONDARY_POD_JSON | grep -Po '"value":.*?[^\\\\]"' | awk -F '"' '{ print $4 }'`
-SECONDARY_DATA_DSA_IP=$SECONDARY_ROUTER_DSA_IP
-
+# Establish this pod's dsaNumber
+while true; do
+	# Get all entries from etcd
+	# Filter for entries with .value that match "HOSTNAME/ADDRESS" and extract dsaNumber from .key
+	# Expect a valid integer
+	myDsaNumber=$(curl -s -XGET $ETCD_SERVICE/v2/keys/dsas | jq -r ".node.nodes[] | select(.value == \"$HOSTNAME/$ADDRESS\") | .key | ltrimstr(\"/dsas/\")")
+	echo "[01] myDsaNumber $myDsaNumber"
+	if echo "$myDsaNumber" | egrep -q '^[0-9]+$'; then
+		# a valid number detected
+		break
+	fi
+	echo "[01] entry $HOSTNAME/$ADDRESS not found in etcd. sleep and try again"
+	sleep 60
+done

@@ -1,2 +1,0 @@
-echo "[*] Running SymlinkConfigFolder"
-ln -s /solution/$CONFIG/config $DXHOME/config
