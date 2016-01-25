@@ -10,21 +10,28 @@ fi
 
 # Configure dsa knowledge file. Write all dsas into dsas.dxc
 while true; do
-	allDsas=$(curl -L $ETCD_SERVICE/v2/keys/dsas -XGET)
-	numDsas=$(echo $allDsas | jq ".node.nodes | length")
-	# maxIndex is the largest modifiedIndex. +1 to this value and use it as the waitIndex in the next step
-	maxIndex=$(echo $allDsas | jq '.node.nodes | max_by(.modifiedIndex) | .modifiedIndex + 1')
-	echo "[02] numDsas $numDsas maxIndex $maxIndex"
-
-	if [ $numDsas -le 0 ]; then
-		echo "[02] no dsas in etcd. sleep and try again"
+	allDsas=$(curl -s -XGET $ETCD_SERVICE/v2/keys/dsas)
+	dsasKeyCheck=$(echo "$allDsas" | jq -r ".node.key")
+	if [ "$dsasKeyCheck" != "/dsas" ]; then
+		echo "[02] unexpected output for allDsas: $allDsas"
 		sleep 10
 		continue
 	fi
 	
-	if ! echo "$waitIndex" | egrep -q '^[0-9]+$'; then
-		echo "[02] invalid waitIndex"
-		waitIndex=0
+	numDsas=$(echo "$allDsas" | jq -r ".node.nodes | length")
+	if [ $numDsas -le 0 ]; then
+		echo "[02] no dsas in etcd. allDsas: $allDsas"
+		sleep 10
+		continue
+	fi
+	
+	# maxIndex is the largest modifiedIndex. +1 to this value and use it as the waitIndex in the next step
+	maxIndex=$(echo $allDsas | jq '.node.nodes | max_by(.modifiedIndex) | .modifiedIndex + 1')
+	echo "[02] numDsas:$numDsas maxIndex:$maxIndex"
+	if ! echo "$maxIndex" | egrep -q '^[0-9]+$'; then
+		echo "[02] invalid maxIndex. allDsas: $allDsas"
+		sleep 10
+		continue
 	fi
 	
 	cat <<EOM >$FILE
