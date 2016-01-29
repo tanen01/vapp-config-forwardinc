@@ -1,0 +1,153 @@
+echo "[*] Loading ldif file"
+
+# Always get an online backup from one of the other dsas
+# If obtained successfully then use it
+# If failed to obtain then use the existing .db (persistent storage)
+# If no existing .db then load from ldif 
+
+# LOADEDLDIF is set once 04_LoadLdif has run once for the current POD. It is meant to detect
+# dxgrid container exit, and not re-run this script. But for POD start/re-start, we would want
+# this script to run.
+LOADEDLDIF=/solution/.loadedldif
+if [ ! -z "${DESTINATION_STATUS}" ]; then
+	LOADEDLDIF=${DESTINATION_STATUS}/.loadedldif
+fi
+if [ -e "$LOADEDLDIF" ]; then
+	return
+fi
+
+DATAVOL=/solution/$CONFIG/../common/ldifs
+LDIFFILE=forwardinc.ldif
+
+# get all dsas from etcd sorted by dsa number
+# each line formatted as podName/podIP/dsaNumber
+sortedDsas=`curl http://dxgrid-discovery:2379/v2/keys/dsas | jq -r '.node.nodes | sort_by(.key | ltrimstr("/dsas/") | tonumber) | .[] | .value+"/"+(.key | ltrimstr("/dsas/"))'`
+echo "[*] sortedDsas: [$sortedDsas]"
+
+# run dxdisp on other dsa for this dsa
+echo "{\"dsa\":\"dsa$myDsaNumber\"}" > /tmp/thisDsa.json
+for aDsa in $sortedDsas; do
+	echo "[*] aDsa: [$aDsa]"
+	dsaIp=$(echo $aDsa | cut -d/ -f2)
+	dsaNumber=$(echo $aDsa | cut -d/ -f3)
+	if [ $dsaNumber -eq $myDsaNumber ]; then
+		continue
+	fi
+	attempt=0
+	while [ $attempt -lt 5 ]; do
+		echo "[*] dsa$dsaNumber: dxdisp dsa$myDsaNumber"
+		dxdispRes=$(curl -k --retry 3 -XPOST --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
+			-H "Content-Type: application/json" \
+			-d @/tmp/thisDsa.json \
+			https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dxdisp)
+		if [ $? -ne 0 ]; then
+			break # dxagent cannot be contacted
+		fi
+		if [ -z "$dxdispRes" ]; then
+			echo "[*] dsa$dsaNumber: dxdisp dsa$myDsaNumber succeeded"
+			echo "$(date) requested dsa$dsaNumber to run dxdisp dsa$myDsaNumber" >> $DXHOME/data/dsa$myDsaNumber.remotedxdisp
+			break # no output: dxdisp success
+		fi
+		# dxagent contacted but dxdisp failed. the other dsa must yet to update its knowledge file. sleep and try again.
+		echo "[*] dsa$dsaNumber: dxdisp dsa$myDsaNumber failed: $dxdispRes"  
+		attempt=$(expr $attempt + 1)
+		sleep 60
+	done
+done
+
+# try to get backup from one of the other dsas
+obtainedBackup=0
+for aDsa in $sortedDsas; do
+	dsaIp=$(echo $aDsa | cut -d/ -f2)
+	dsaNumber=$(echo $aDsa | cut -d/ -f3)
+	if [ $dsaNumber -eq $myDsaNumber ]; then
+		continue
+	fi
+	echo "[*] try to get backup from dsa$dsaNumber"
+	
+	backup=$(curl -k --retry 3 --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
+		https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dsa$dsaNumber/backup)
+	if [ $? -ne 0 ]; then
+		continue # dxagent cannot be contacted
+	fi
+	oldUtcTimestamp=$(echo $backup | jq -r '.utcTimestamp')
+	echo "[*] backup old utcTimestamp: $oldUtcTimestamp"
+	
+	echo "[*] request dsa$dsaNumber to create backup"
+	postResult=$(curl -XPOST -k --retry 3 --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
+		https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dsa$dsaNumber/backup)
+	if [ $? -ne 0 ]; then
+		continue # dxagent cannot be contacted
+	fi
+	attempt=0
+	while [ $attempt -lt 20 ]; do
+		# wait for zdb to be dumped; could be a long time if db is big
+		attempt=$(expr $attempt + 1)
+		sleep 60
+		backup=$(curl -k --retry 3 --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
+			https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dsa$dsaNumber/backup)
+		if [ $? -ne 0 ]; then
+			break # dxagent cannot be contacted
+		fi
+		newUtcTimestamp=$(echo $backup | jq -r '.utcTimestamp')
+		echo "[*] backup new utcTimestamp: $newUtcTimestamp"				
+		if [ "$newUtcTimestamp" != "null" -a "$newUtcTimestamp" != "$oldUtcTimestamp" ]; then
+			# new backup is ready
+			echo "[*] getting backup"
+			rm -f /tmp/headers.txt /tmp/backup.gz
+			curl -k --retry 3 --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
+				-H "Accept: application/x-gzip" \
+				-D /tmp/headers.txt \
+				-o /tmp/backup.gz \
+				https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dsa$dsaNumber/backup
+			if [ $? -ne 0 ]; then
+				break # dxagent cannot be contacted
+			fi
+			# Verify MD5
+			imd5=$(cat /tmp/headers.txt | egrep -i '^Content-Md5' | tr -d '\r' | cut -d' ' -f2)
+			omd5=$(openssl dgst -md5 /tmp/backup.gz | cut -d' ' -f2)
+			echo "[*] MD5 check $imd5:$omd5"
+			if [ "$imd5" = "$omd5" ]; then
+				rm -f /tmp/backup
+				gunzip -f /tmp/backup.gz
+				mv -f /tmp/backup $DXHOME/data/dsa$myDsaNumber.db
+				if [ $? -eq 0 ]; then
+					obtainedBackup=1
+					break
+				fi
+			else
+				echo "[*] MD5 mismatched"
+			fi
+		fi
+	done
+	
+	if [ $obtainedBackup -eq 1 ]; then
+		echo "[*] successfully obtained backup from dsa$dsaNumber"
+		break
+	fi
+done
+
+if [ $obtainedBackup -eq 1 ]; then
+	echo "[*] dxdisp dsa$myDsaNumber"
+	rm -f $DXHOME/data/dsa$myDsaNumber.dp $DXHOME/data/dsa$myDsaNumber.tx $DXHOME/data/dsa$myDsaNumber.dx $DXHOME/data/dsa$myDsaNumber.remotedxdisp
+	dxdisp dsa$myDsaNumber
+else
+	# Did not obtain new backup from any other dsa. If we have run dxdisp remotely then this is bad because
+	# the other dsa(s) have updated their timestamps for this dsa. Exit container.
+	if [ -e $DXHOME/data/dsa$myDsaNumber.remotedxdisp ]; then
+		echo "[*] FATAL: requested other dsas to run dxdisp on this dsa, but failed to obtain new backup"
+		cat $DXHOME/data/dsa$myDsaNumber.remotedxdisp
+		echo "[*] exit container"
+		exit 1
+	fi
+fi
+
+if [ ! -e $DXHOME/data/dsa$myDsaNumber.db ]; then
+	# no db file. load from ldif as last resort
+	echo "[*] Loading data from $DATAVOL/$LDIFFILE"
+	rm -f $DXHOME/data/dsa$myDsaNumber.dp $DXHOME/data/dsa$myDsaNumber.tx $DXHOME/data/dsa$myDsaNumber.dx
+	dxloaddb -s dsa$myDsaNumber $DATAVOL/$LDIFFILE
+	dxdisp dsa$myDsaNumber
+fi
+
+touch $LOADEDLDIF
