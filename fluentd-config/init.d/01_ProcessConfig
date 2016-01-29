@@ -1,15 +1,15 @@
-echo "[*] Running '00_ProcessConfig'"
-echo "[*] CONFIG=[${CONFIG}]"
+echo "[*] Running '01_ProcessConfig'"
+echo "[*] myDsaNumber=[${myDsaNumber}]"
 echo "[*] ELASTICSEARCH_HOST=[${ELASTICSEARCH_HOST}]"
 echo "[*] ELASTICSEARCH_PORT=[${ELASTICSEARCH_PORT}]"
 
 TD_AGENT_CONFIG_SRC=/solution/fluentd-config/td-agent.conf
 TD_AGENT_CONFIG_DEST=/etc/td-agent/td-agent.conf
 
-WARN_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_warn_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_warn_*.log
-ALARM_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_alarm.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_alarm.log
-STATS_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_stats_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_stats_*.log
-QUERY_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/${CONFIG}-data/logs/*_query_*.log,/storage/${KUBE_NAMESPACE}/${CONFIG}-router/logs/*_query_*.log
+WARN_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/dsa${myDsaNumber}/logs/*_warn_*.log
+ALARM_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/dsa${myDsaNumber}/logs/*_alarm.log
+STATS_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/dsa${myDsaNumber}/logs/*_stats_*.log
+QUERY_LOG_FILE_PATH=/storage/${KUBE_NAMESPACE}/dsa${myDsaNumber}/logs/*_query_*.log
 
 echo "[*] WARN_LOG_FILE_PATH=[${WARN_LOG_FILE_PATH}]"
 echo "[*] ALARM_LOG_FILE_PATH=[${ALARM_LOG_FILE_PATH}]"
