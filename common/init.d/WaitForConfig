@@ -10,3 +10,6 @@ while [ ! -e "${CONFIGURED}" ]; do
   echo "[*] Waiting 5 seconds for existence of: ${CONFIGURED}"
   sleep 5
 done
+
+myDsaNumber=`cat ${CONFIGURED} | head -n 1`
+echo "[*] My dsa number $myDsaNumber"

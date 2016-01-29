@@ -223,8 +223,8 @@
 						"name": "dxgrid-fluentd",
 						"image": "store.vapp-security.solutions/vapp/fluentd:latest",
 						"env": [{
-							"name": "CONFIG",
-							"value": "primary"
+							"name": "DESTINATION_STATUS",
+							"value": "/solution_status"
 						},
 						{
 							"name": "KUBE_NAMESPACE",
@@ -246,6 +246,10 @@
 						{
 							"name": "dxgrid-solution-vol",
 							"mountPath": "/solution"
+						},
+						{
+							"name": "dxgrid-status-vol",
+							"mountPath": "/solution_status"
 						}]
 					}]
 				}
