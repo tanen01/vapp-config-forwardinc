@@ -1,0 +1,15 @@
+if [ -z "$K8S_SVCACC_TOKEN" ]; then
+	K8S_SVCACC_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+fi
+if [ -z "$1" ]; then
+	return
+fi
+
+while true; do
+	echo "[*] Deleting pod $1"
+	deleteRes=$(curl -k -s -XDELETE -H "User-Agent: x" -H "Authorization: Bearer $K8S_SVCACC_TOKEN" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/$KUBE_NAMESPACE/pods/$1)
+	if [ $? -eq 0 ]; then
+		break
+	fi
+	sleep 5
+done

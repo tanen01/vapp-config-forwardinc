@@ -1,0 +1,22 @@
+if [ -z "$K8S_SVCACC_TOKEN" ]; then
+	K8S_SVCACC_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+fi
+
+# delete all pods
+while true; do
+	echo "[*] Deleting all dxgrid pods"
+	# get all pods from k8s app=dxgrid
+	podList=$(curl -k -s -XGET -H "User-Agent: x" -H "Authorization: Bearer $K8S_SVCACC_TOKEN" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/$KUBE_NAMESPACE/pods?labelSelector=app%3Ddxgrid)
+	objKind=$(echo $podList | jq -r '.kind')
+	if [ "$objKind" != "PodList" ]; then
+		echo "[*] kubernetes did not return expected PodList object (rc: $rc): $podList"
+		sleep 10
+		continue
+	fi
+	livePods=$(echo $podList | jq -r '.items[] | .metadata.name')
+	for p in $livePods; do
+		. /solution/common/misc/deletePod $p
+	done
+	break # done
+done	
+		
