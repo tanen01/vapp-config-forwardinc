@@ -49,7 +49,7 @@ EOM
 		
 		i=`expr $i + 1`
 		
-		if [ "$nodeKey" == "null" ] || [ "$nodeKey" == "null" ] || [ -z "$nodeValue" ] || [ -z "$nodeValue" ]; then
+		if [ "$nodeKey" == "null" ] || [ "$nodeValue" == "null" ] || [ -z "$nodeKey" ] || [ -z "$nodeValue" ]; then
 			continue
 		fi
 	
