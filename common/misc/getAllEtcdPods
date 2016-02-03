@@ -1,0 +1,10 @@
+# get all dsas from etcd
+while true; do
+	allDsas=$(curl -s -XGET http://dxgrid-discovery:2379/v2/keys/dsas)
+	dsasKeyCheck=$(echo $allDsas | jq -r ".node.key")
+	if [ "$dsasKeyCheck" = "/dsas" ]; then
+		break
+	fi
+	echo "[*] unexpected output for allDsas: $allDsas"
+	sleep 10
+done
