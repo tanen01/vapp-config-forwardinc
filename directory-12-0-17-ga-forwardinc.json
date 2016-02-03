@@ -140,7 +140,7 @@
 					}],
 					"containers": [{
 						"name": "dxgrid-data",
-						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17",
+						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17.ga",
 						"env": [{
 							"name": "CONFIG",
 							"value": "primary-data"
