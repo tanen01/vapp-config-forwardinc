@@ -10,13 +10,7 @@ fi
 
 # Configure dsa knowledge file. Write all dsas into dsas.dxc
 while true; do
-	allDsas=$(curl -s -XGET $ETCD_SERVICE/v2/keys/dsas)
-	dsasKeyCheck=$(echo "$allDsas" | jq -r ".node.key")
-	if [ "$dsasKeyCheck" != "/dsas" ]; then
-		echo "[02] unexpected output for allDsas: $allDsas"
-		sleep 10
-		continue
-	fi
+	. /solution/common/misc/getAllEtcdPods
 	
 	numDsas=$(echo "$allDsas" | jq -r ".node.nodes | length")
 	if [ $numDsas -le 0 ]; then
@@ -41,20 +35,11 @@ EOM
 
 	# My dsa number in first position
 	echo "$myDsaNumber" > ${CONFIGURED}.tmp
-	i=0
-	while [ $i -lt $numDsas ]; do
-		nodeKey=`echo $allDsas | jq -r ".node.nodes[$i].key"`
-		nodeValue=`echo $allDsas | jq -r ".node.nodes[$i].value"`
-		echo "[02] nodeKey:$nodeKey nodeValue:$nodeValue"
-		
-		i=`expr $i + 1`
-		
-		if [ "$nodeKey" == "null" ] || [ "$nodeValue" == "null" ] || [ -z "$nodeKey" ] || [ -z "$nodeValue" ]; then
-			continue
-		fi
-	
-		dsaNumber=`echo $nodeKey | cut -d/ -f 3`
-		dsaIP=`echo $nodeValue | cut -d/ -f 2`
+	sortedDsas=$(echo $allDsas | jq -r '.node.nodes | sort_by(.key | ltrimstr("/dsas/") | tonumber) | .[] | .value+"/"+(.key | ltrimstr("/dsas/"))')
+	for aDsa in $sortedDsas; do
+		echo "[02] aDsa:$aDsa"
+		dsaNumber=$(echo $aDsa | cut -d/ -f 3)
+		dsaIP=$(echo $aDsa | cut -d/ -f 2)
 		echo "[02] dsaNumber:$dsaNumber dsaIP:$dsaIP"
 		
 		if [ -z "$dsaNumber" ] || [ -z "$dsaIP" ]; then

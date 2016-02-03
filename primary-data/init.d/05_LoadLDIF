@@ -19,9 +19,11 @@ fi
 DATAVOL=/solution/$CONFIG/../common/ldifs
 LDIFFILE=forwardinc.ldif
 
-# get all dsas from etcd sorted by dsa number
+# get all dsas from etcd
+. /solution/common/misc/getAllEtcdPods
+
 # each line formatted as podName/podIP/dsaNumber
-sortedDsas=`curl http://dxgrid-discovery:2379/v2/keys/dsas | jq -r '.node.nodes | sort_by(.key | ltrimstr("/dsas/") | tonumber) | .[] | .value+"/"+(.key | ltrimstr("/dsas/"))'`
+sortedDsas=$(echo $allDsas | jq -r '.node.nodes | sort_by(.key | ltrimstr("/dsas/") | tonumber) | .[] | .value+"/"+(.key | ltrimstr("/dsas/"))')
 echo "[*] sortedDsas: [$sortedDsas]"
 
 # run dxdisp on other dsa for this dsa
@@ -80,10 +82,10 @@ for aDsa in $sortedDsas; do
 		continue # dxagent cannot be contacted
 	fi
 	attempt=0
-	while [ $attempt -lt 20 ]; do
+	while [ $attempt -lt 50 ]; do
 		# wait for zdb to be dumped; could be a long time if db is big
 		attempt=$(expr $attempt + 1)
-		sleep 60
+		sleep 15
 		backup=$(curl -k --retry 3 --cert $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem --key $DXHOME/config/ssld/personalities/dsa$myDsaNumber.pem \
 			https://$dsaIp:8443/ca/api/dxagent/v0.1/dsas/dsa$dsaNumber/backup)
 		if [ $? -ne 0 ]; then
