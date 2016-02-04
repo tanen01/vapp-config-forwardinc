@@ -1,4 +1,4 @@
-echo "[*] Loading ldif file"
+echo "[40] Check and get db"
 
 # Always get an online backup from one of the other dsas
 # If obtained successfully then use it

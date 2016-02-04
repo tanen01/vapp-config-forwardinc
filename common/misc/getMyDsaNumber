@@ -1,0 +1,20 @@
+# Get IP addr
+ADDRESS=`grep $HOSTNAME /etc/hosts | awk '{print $1}' | uniq`
+echo "[*] Using $ADDRESS for IP address"
+
+# Establish this pod's dsaNumber
+while true; do
+	# Get all entries from etcd
+	# Filter for entries with .value that match "HOSTNAME/ADDRESS" and extract dsaNumber from .key
+	# Expect a valid integer
+	. /solution/common/misc/getAllEtcdPods
+	myDsaNumber=$(echo $allDsas | jq -r ".node.nodes[] | select(.value == \"$HOSTNAME/$ADDRESS\") | .key | ltrimstr(\"/dsas/\")")
+	if echo "$myDsaNumber" | egrep -q '^[0-9]+$'; then
+		# a valid number detected
+		break
+	fi
+	echo "[*] entry $HOSTNAME/$ADDRESS not found in etcd. sleep and try again"
+	sleep 60
+done
+
+echo "[*] myDsaNumber $myDsaNumber"

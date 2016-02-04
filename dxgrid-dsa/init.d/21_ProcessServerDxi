@@ -1,0 +1,5 @@
+echo "[21] Running 'ProcessServerDxi'"
+
+rm -rf /solution/$CONFIG/config/servers
+mkdir -p /solution/$CONFIG/config/servers
+cp -f /solution/common/servers_template/dsa.dxi /solution/$CONFIG/config/servers/dsa$myDsaNumber.dxi

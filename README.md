@@ -27,9 +27,9 @@ looks like this:
 }
 ```
 
-dxgrid-config
+dxgrid-dsa
 
-Wait for this POD's entry to exist in etcd under the /dsas subtree.
+This config is run by dxgrid container. It waits for this POD's entry to exist in etcd under the /dsas subtree.
 It looks for an entry under /dsas with value matching this POD's Hostname/IP.
 
 Once a matching entry is found, then the DSA name is established by using the information from the entry.
@@ -40,11 +40,7 @@ Queries etcd for all other DSA's and write out a single /knowledge/dsas.dxc.
 dxagent is also configured in this step. This DSA's certificate and private are also used by dxagent
 that runs in this POD.
 
-Writes /solution/.configured.
+Attempt to get an onlinebackup from one of the other running dsas if possible, and use it as its own db.
+If an onlibebackup cannot be obtained from other dsas, then load from LDIF as last resort.
 
-dxgrid-dsa
-
-This config is run by dxgrid container. It waits for dxgrid-config to finish (existence of .configured).
-Then reads the first line of .configured that contains the dsa number for.
-Once dsa number is known, then proceeds to create symlinks for config, data and log folders.
-Finally, attempt to request via dxagent for an onlinebackup from any of the running dsas.
+Finally, keep watching etcd for changes and reconfigure.

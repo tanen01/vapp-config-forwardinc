@@ -1,0 +1,10 @@
+echo "[22] Running 'ProcessDxagentConfig'"
+
+rm -rf /solution/$CONFIG/dxagent-config
+mkdir -p /solution/$CONFIG/dxagent-config
+cat /solution/common/dxagent-template/SAMPLE.gunicorn-config.py | \
+	sed -e "s#^certfile =.*\$#certfile = '/solution/$CONFIG/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
+	sed -e "s#^keyfile =.*\$#keyfile = '/solution/$CONFIG/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
+	sed -e "s#^ca_certs =.*\$#ca_certs = '/solution/$CONFIG/config/ssld/trusted.pem'#g" \
+	> /solution/$CONFIG/dxagent-config/gunicorn-config.py
+cp /solution/common/dxagent-template/SAMPLE.gunicorn-logging.conf /solution/$CONFIG/dxagent-config/gunicorn-logging.conf

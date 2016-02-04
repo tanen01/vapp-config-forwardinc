@@ -129,7 +129,7 @@
 					}],
 					"containers": [{
 						"name": "dxgrid-data",
-						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17",
+						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17.ga",
 						"resources": {
 							"requests": {
 								"cpu": "10m"
@@ -204,14 +204,6 @@
 						{
 							"name": "DESTINATION_STATUS",
 							"value": "/solution_status"
-						},
-						{
-							"name": "CONFIG",
-							"value": "dxgrid-config"
-						},
-						{
-							"name": "CONFIG_FOR",
-							"value": "dxgrid-dsa"
 						}],
 						"volumeMounts": [{
 							"name": "dxgrid-solution-vol",
@@ -232,10 +224,6 @@
 							}
 						},
 						"env": [{
-							"name": "DESTINATION_STATUS",
-							"value": "/solution_status"
-						},
-						{
 							"name": "KUBE_NAMESPACE",
 							"value": "${SOLUTION_NAMESPACE}"
 						},

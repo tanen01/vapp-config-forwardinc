@@ -1,0 +1,39 @@
+echo "[50] Start dxserver"
+
+# Start any configured DSA
+dxserver start all
+if [ $? -ne 0 ]; then
+	echo "[50] dxserver start failed. exiting..."
+	exit 1
+fi
+
+# Find the pid and wait on its proc entry
+DSA_PID=$(cat $DXHOME/pid/* | awk '{print $1}')
+echo "[50] dsa started with pid $DSA_PID"
+if [ -z "$DSA_PID" ]; then
+	echo "[50] dsa pid is empty. exiting..."
+	exit 1
+fi
+
+# Start dxagent
+CURRDIR=$PWD
+cd $DXHOME/dxagent
+gunicorn --config gunicorn-config.py dxagent:app &
+echo "[50] Waiting for dxagent to start"
+startWait=$(date +%s)
+while [ ! -e "./gunicorn.pid" ]; do
+	sleep 5
+	now=$(date +%s)
+	if [ $(expr $now - $startWait) -gt 120 ]; then
+		echo "[50] dxagent failed to start after more than 2 minutes"
+		exit 1
+	fi
+done
+cd $CURRDIR
+
+DXAGENT_PID=$(cat $DXHOME/dxagent/gunicorn.pid)
+echo "[50] dxagent started with pid $DXAGENT_PID"
+if [ -z "$DXAGENT_PID" ]; then
+	echo "[50] dxagent pid is empty. exiting..."
+	exit 1
+fi

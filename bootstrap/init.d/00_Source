@@ -1,3 +1,7 @@
+if [ -z "${CONFIG}" ]; then
+	return
+fi
+
 CONFIG_INIT_DIR=${DESTINATION}/${CONFIG}/init.d
 
 if [ -d "${CONFIG_INIT_DIR}" ]; then

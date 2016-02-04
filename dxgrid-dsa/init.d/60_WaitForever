@@ -1,0 +1,52 @@
+echo "[60] Detecting changes"
+
+# While both dsa and dxagent are still alive, keep watching etcd for changes and reconfigure
+
+waitIndex=0
+hasPendingUpdate=0
+while [ -d /proc/$DSA_PID -a -z "$(grep zombie /proc/$DSA_PID/status)" -a -d /proc/$DXAGENT_PID -a -z "$(grep zombie /proc/$DXAGENT_PID/status)" ]; do
+	if [ $maxIndex -gt $waitIndex ]; then
+		# maxIndex is set in ProcessKnowledgeDxc to the largest modifiedIndex of all nodes. On the first loop,
+		# we would expect maxIndex > waitIndex and want to wait on the larger value. This is also the
+		# case when pods are scaled up. However, if pods are scaled down then maxIndex may be lower than
+		# than before. We do not want to wait on the smaller value
+		waitIndex=$maxIndex
+	fi
+	echo "[60] Waiting for changes. waitIndex $waitIndex"
+	modNotification=$(curl -m 60 -L http://dxgrid-discovery:2379/v2/keys/dsas?wait=true\&recursive=true\&waitIndex=$waitIndex)
+	retVal=$?
+	echo "[60] Detected changes (rc:$retVal hasPendingUpdate:$hasPendingUpdate): $modNotification"
+	
+	if [ $retVal -eq 28 ]; then
+		# Timed out
+		if [ $hasPendingUpdate -eq 1 ]; then
+			# Do not process config on every etcd update. Instead flag hasPendingUpdate=1 when an update
+			# is detected. On the next curl timeout(28), check this flag and process config if needed.
+			# The idea is that we want to collapse quick successive updates into one.
+			# Otherwise a series of quick updates here may cause dxserver to fail to start. the knowledge file
+			# is continuously being updated here while dxserver tries to read it.
+			hasPendingUpdate=0
+			echo "[60] update config"
+			. /solution/dxgrid-dsa/init.d/20_ProcessKnowledgeDxc
+			dxserver init all
+		fi
+		continue
+	fi
+	
+	responseModifiedIndex=`echo $modNotification | jq ".node.modifiedIndex"`
+	if ! echo $responseModifiedIndex | egrep -q '^[0-9]+$'; then
+		# "modifiedIndex" not seen in the response. Assume error
+		echo "[60] error: modifiedIndex not found in update"
+		sleep 10
+		continue
+	fi
+	
+	# update detected: seen "modifiedIndex" in the response. update the next waitIndex and flag hasPendingUpdate 
+	waitIndex=`expr $waitIndex + 1`
+	hasPendingUpdate=1
+done
+
+echo "[60] dsa and/or dxagent has terminated. exiting"
+
+# Yes we want to exit
+exit 1
