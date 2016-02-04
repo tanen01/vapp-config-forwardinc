@@ -1,0 +1,10 @@
+CONFIG_INIT_DIR=${DESTINATION}/${CONFIG}/init.d
+
+if [ -d "${CONFIG_INIT_DIR}" ]; then
+	for configscript in ${CONFIG_INIT_DIR}/*; do
+		if [ -f "${configscript}" ]; then
+			echo "[*] Sourcing ${configscript}"
+			. "${configscript}"
+		fi
+	done
+fi

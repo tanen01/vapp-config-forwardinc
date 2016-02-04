@@ -4,7 +4,7 @@
 	"metadata": {
 		"name": "dir-12-0-17-ga-forwardinc",
 		"creationTimestamp": null,
-		"namespace": "dir-12-0-17-ga-forwardinc",
+		"namespace": "dir-12-0-17-ga",
 		"annotations": {
 			"description": "CA Directory 12.0.17.ga ForwardInc"
 		}
@@ -18,17 +18,6 @@
 				"ca.com/recycle-secrets-on-master-bootup": "true"
 			}
 		}
-	},
-	{
-		"kind": "Secret",
-		"apiVersion": "v1",
-		"metadata": {
-			"name": "ca-dev-registry"
-		},
-		"data": {
-			".dockercfg": "ewogICJkZXYtc3RvcmUudmFwcC1zZWN1cml0eS5zb2x1dGlvbnMiOiB7CiAgICAiYXV0aCI6ICJaRzkzYm14dllXUTZZV052UzA5dk5sQnRWVXRzVURaaGVrdFNjbkpwTUZoMWN6QTJUMVJWWkVJMGIzcDFaSE5yVEdaTVFrVmFkRkpUWW1WdmJGWlBhVlpNYUZJMmVrSXZhREk0VVdkNloybGpOVEZyU2twd1JtTkxaRUpoU0haTVJ6QlBUbFZNY3pRMFluUjVXRU40YkUwM1RsazkiLAogICAgImVtYWlsIjogIiIKICB9Cn0K"
-		},
-		"type": "kubernetes.io/dockercfg"
 	},
 	{
 		"apiVersion": "v1",
@@ -141,11 +130,12 @@
 					"containers": [{
 						"name": "dxgrid-data",
 						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17",
-						"env": [{
-							"name": "CONFIG",
-							"value": "primary-data"
+						"resources": {
+							"requests": {
+								"cpu": "10m"
+							}
 						},
-						{
+						"env": [{
 							"name": "KUBE_NAMESPACE",
 							"value": "${SOLUTION_NAMESPACE}"
 						},
@@ -156,6 +146,10 @@
 						{
 							"name": "DESTINATION_STATUS",
 							"value": "/solution_status"
+						},
+						{
+							"name": "CONFIG",
+							"value": "dxgrid-dsa"
 						}],
 						"ports": [{
 							"containerPort": 2389
@@ -186,6 +180,11 @@
 						"name": "dxgrid-configsvc",
 						"image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
 						"imagePullPolicy": "IfNotPresent",
+						"resources": {
+							"requests": {
+								"cpu": "10m"
+							}
+						},
 						"env": [{
 							"name": "KUBE_NAMESPACE",
 							"value": "${SOLUTION_NAMESPACE}"
@@ -208,7 +207,11 @@
 						},
 						{
 							"name": "CONFIG",
-							"value": "primary-data"
+							"value": "dxgrid-config"
+						},
+						{
+							"name": "CONFIG_FOR",
+							"value": "dxgrid-dsa"
 						}],
 						"volumeMounts": [{
 							"name": "dxgrid-solution-vol",
@@ -222,6 +225,12 @@
 					{
 						"name": "dxgrid-fluentd",
 						"image": "store.vapp-security.solutions/vapp/fluentd:latest",
+						"imagePullPolicy": "IfNotPresent",
+						"resources": {
+							"requests": {
+								"cpu": "10m"
+							}
+						},
 						"env": [{
 							"name": "DESTINATION_STATUS",
 							"value": "/solution_status"
@@ -322,11 +331,15 @@
 						},
 						{
 							"name": "SOURCE",
-							"value": "${DISCOVERY_SOLUTION_CONFIGURATION}"
+							"value": "${DXGRID_SOLUTION_CONFIGURATION}"
 						},
 						{
 							"name": "DESTINATION",
 							"value": "/solution"
+						},
+						{
+							"name": "CONFIG",
+							"value": "dxgrid-discovery"
 						}],
 						"volumeMounts": [{
 							"name": "discovery-solution-vol",
@@ -400,10 +413,5 @@
 		"description": "URL of dxgrid configuration.",
 		"name": "DXGRID_SOLUTION_CONFIGURATION",
 		"value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.17.zip"
-	},
-	{
-		"description": "URL of dxgrid-discovery configuration.",
-		"name": "DISCOVERY_SOLUTION_CONFIGURATION",
-		"value": "https://github.com/ca-directory/vapp-config-forwardinc-discovery/archive/12.0.17.zip"
 	}]
 }

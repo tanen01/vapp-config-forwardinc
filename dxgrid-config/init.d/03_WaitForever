@@ -23,7 +23,7 @@ while [ True ]; do
 		# is continuously being updated here while dxserver tries to read it.
 		hasPendingUpdate=0
 		echo "[03] update config"
-		. /solution/bootstrap/init.d/02_ProcessConfig
+		. /solution/dxgrid-config/init.d/02_ProcessConfig
 		continue
 	elif [ $retVal -eq 28 ]; then
 		# Timed out

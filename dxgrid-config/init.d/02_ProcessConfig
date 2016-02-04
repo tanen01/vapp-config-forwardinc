@@ -1,7 +1,7 @@
 echo "[02] Running 'ProcessConfig'"
 
-mkdir -p /solution/$CONFIG/config/knowledge
-FILE=/solution/$CONFIG/config/knowledge/dsas.dxc
+mkdir -p /solution/$CONFIG_FOR/config/knowledge
+FILE=/solution/$CONFIG_FOR/config/knowledge/dsas.dxc
 
 CONFIGURED=/solution/.configured
 if [ ! -z "${DESTINATION_STATUS}" ]; then
@@ -73,18 +73,18 @@ EOM
 done
 
 # Configure dxagent
-rm -rf /solution/$CONFIG/dxagent-config
-mkdir -p /solution/$CONFIG/dxagent-config
-cat /solution/$CONFIG/../common/dxagent-template/SAMPLE.gunicorn-config.py | \
-	sed -e "s#^certfile =.*\$#certfile = '/solution/$CONFIG/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
-	sed -e "s#^keyfile =.*\$#keyfile = '/solution/$CONFIG/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
-	sed -e "s#^ca_certs =.*\$#ca_certs = '/solution/$CONFIG/config/ssld/trusted.pem'#g" \
-	> /solution/$CONFIG/dxagent-config/gunicorn-config.py
-cp /solution/$CONFIG/../common/dxagent-template/SAMPLE.gunicorn-logging.conf /solution/$CONFIG/dxagent-config/gunicorn-logging.conf
+rm -rf /solution/$CONFIG_FOR/dxagent-config
+mkdir -p /solution/$CONFIG_FOR/dxagent-config
+cat /solution/$CONFIG_FOR/../common/dxagent-template/SAMPLE.gunicorn-config.py | \
+	sed -e "s#^certfile =.*\$#certfile = '/solution/$CONFIG_FOR/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
+	sed -e "s#^keyfile =.*\$#keyfile = '/solution/$CONFIG_FOR/config/ssld/personalities/dsa$myDsaNumber.pem'#g" | \
+	sed -e "s#^ca_certs =.*\$#ca_certs = '/solution/$CONFIG_FOR/config/ssld/trusted.pem'#g" \
+	> /solution/$CONFIG_FOR/dxagent-config/gunicorn-config.py
+cp /solution/$CONFIG_FOR/../common/dxagent-template/SAMPLE.gunicorn-logging.conf /solution/$CONFIG_FOR/dxagent-config/gunicorn-logging.conf
 
-rm -rf /solution/$CONFIG/config/servers
-mkdir -p /solution/$CONFIG/config/servers
-cp -f /solution/common/servers_template/dsa.dxi /solution/$CONFIG/config/servers/dsa$myDsaNumber.dxi
+rm -rf /solution/$CONFIG_FOR/config/servers
+mkdir -p /solution/$CONFIG_FOR/config/servers
+cp -f /solution/common/servers_template/dsa.dxi /solution/$CONFIG_FOR/config/servers/dsa$myDsaNumber.dxi
 mv -f ${CONFIGURED}.tmp ${CONFIGURED}
 
 echo "[02] wrote my dsaNumber $myDsaNumber. Total dsa config $numDsas"

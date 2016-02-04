@@ -1,0 +1,151 @@
+set +eo pipefail
+
+# monitor starts
+# wait for etcd to start
+#
+# infinite loop
+#   get all pods from k8s dsaNamePrefix=dsa
+#   get all entries from etcd
+#   remove entries from etcd for pods that no longer exist
+#   add new entries to etcd for new pods
+#   sleep
+
+echo "[00] Monitoring started"
+
+ETCD_SERVICE=http://dxgrid-discovery:2379
+K8S_SVCACC_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+# Create directory /dsas
+echo "[00] creating /dsas in etcd"
+while true; do
+	curl -s -XPUT $ETCD_SERVICE/v2/keys/dsas -d dir=true
+	if [ $? -eq 0 ]; then
+		echo "[00] created /dsas in etcd or already exist"
+		break
+	fi
+	echo "[00] etcd not available yet"
+	sleep 5
+done
+
+while true; do
+	# get all pods from k8s app=dxgrid
+	podList=$(curl -k -s -XGET -H "User-Agent: x" -H "Authorization: Bearer $K8S_SVCACC_TOKEN" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/$KUBE_NAMESPACE/pods?labelSelector=app%3Ddxgrid)
+	rc=$?
+	objKind=$(echo $podList | jq -r '.kind')
+	if [ "$objKind" != "PodList" ]; then
+		echo "[00] kubernetes did not return expected PodList object (rc: $rc): $podList"
+		sleep 10
+		continue
+	fi
+	livePods=$(echo $podList | jq -r '.items[] | select(.status.podIP != null) | .metadata.name+"/"+.status.podIP')
+	echo "[00] livePods [$livePods]"
+	
+	# get all entries from etcd
+	etcdPodList=$(curl -s -XGET $ETCD_SERVICE/v2/keys/dsas)
+	rc=$?
+	etcdNodeKey=$(echo $etcdPodList | jq -r '.node.key')
+	if [ "$etcdNodeKey" != "/dsas" ]; then
+		echo "[00] curl returned unexpected output (rc: $rc): $etcdPodList"
+		sleep 10
+		continue
+	fi
+	etcdPods=$(echo $etcdPodList | jq -r '.node.nodes[] | select(.value != null) | .value+"/"+(.key | ltrimstr("/dsas/"))')
+	echo "[00] etcdPods [$etcdPods]"
+	
+	# find pods in etcdPods that are not in livePods
+	# livePods are each formatted podName/podIP
+	# etcdPods are each formatted podName/podIP/dsaNumber
+	podsToDelete=""
+	for ePod in $etcdPods; do
+		#echo "[00] checking: $ePod"
+		foundPod=0
+		for lPod in $livePods; do
+			#echo "[00] lPod: $lPod"
+			if echo "$ePod" | egrep -q "^$lPod/[0-9]+$"; then
+				echo "[00] $ePod is still alive"
+				foundPod=1
+				break
+			fi
+		done
+		if [ $foundPod -eq 0 ]; then
+			echo "[00] $ePod is dead. Append to delete list"
+			podsToDelete="$podsToDelete$ePod"$'\n'
+		fi
+	done
+	
+	# delete dead pods from etcd
+	echo "[00] podsToDelete [$podsToDelete]"
+	for delPod in $podsToDelete; do
+		echo "[00] deleting $delPod"
+		if [ -z "$delPod" ]; then
+			continue
+		fi 
+		dsaPodName=$(echo "$delPod" | cut -d/ -f1)
+		dsaPodIP=$(echo "$delPod" | cut -d/ -f2)
+		dsaNumber=$(echo "$delPod" | cut -d/ -f3)
+		echo "[00] deleting dsa-$dsaNumber from etcd"
+		modifiedIndex=$(curl -s -XDELETE $ETCD_SERVICE/v2/keys/dsas/$dsaNumber?prevValue=$dsaPodName/$dsaPodIP | jq ".node.modifiedIndex")
+		if ! echo "$modifiedIndex" | egrep -q '^[0-9]+$'; then
+			echo "[00] failed to delete dsa-$dsaNumber from etcd. invalid modifiedIndex returned"
+		fi
+	done
+	
+	# now do the reverse
+	# find pods in livePods that are not in etcdPods
+	podsToAdd=""
+	for lPod in $livePods; do
+		#echo "[00] checking: $lPod"
+		foundPod=0
+		for ePod in $etcdPods; do
+			#echo "[00] ePod: $ePod"
+			if echo "$ePod" | egrep -q "^$lPod/[0-9]+$"; then
+				echo "[00] $lPod is already in etcd"
+				foundPod=1
+				break
+			fi
+		done
+		if [ $foundPod -eq 0 ]; then
+			echo "[00] $lPod is new. Append to add list"
+			podsToAdd="$podsToAdd$lPod"$'\n'
+		fi
+	done
+	
+	# add new pods to etcd
+	# first we need to find out number of replicas
+	echo "[00] podsToAdd [$podsToAdd]"
+	numReplicas=$(curl -k -s -XGET -H "User-Agent: x" -H "Authorization: Bearer $K8S_SVCACC_TOKEN" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/$KUBE_NAMESPACE/replicationcontrollers/dxgrid-data-rc | jq -r '.spec.replicas')
+	echo "[00] numReplicas $numReplicas"
+	if ! echo "$numReplicas" | egrep -q '^[0-9]+$'; then
+		numReplicas=0
+	fi
+	
+	for addPod in $podsToAdd; do
+		echo "[00] adding $addPod"
+		if [ -z "$addPod" ]; then
+			continue
+		fi
+		
+		dsaNumber=0
+		# try to add as dsa0 ... dsa[numReplicas]
+		while [ $dsaNumber -lt $numReplicas ]; do
+			echo "[00] trying dsaNumber $dsaNumber"
+			modifiedIndex=$(curl -s -XPUT $ETCD_SERVICE/v2/keys/dsas/$dsaNumber?prevExist=false -d value="$addPod" | jq ".node.modifiedIndex")
+			echo "[00] modifiedIndex $modifiedIndex"
+			if ! echo "$modifiedIndex" | egrep -q '^[0-9]+$'; then
+				echo "[00] failed to add as dsa-$dsaNumber. try next dsaNumber"
+				dsaNumber=`expr $dsaNumber + 1`
+				continue
+			fi
+			# added successfully
+			break
+		done
+		if [ $dsaNumber -ge $numReplicas ]; then
+			# all or some pods in podsToAdd couldn't be added into etcd.
+			# nothing can be done at this point. let the main loop repeat entire process again next time.
+			echo "[00] failed to find any unused slot from 0-$numReplicas in etcd. sleep and try again."
+			break
+		fi
+	done
+	
+	sleep 60
+done
