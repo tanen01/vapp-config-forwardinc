@@ -12,7 +12,7 @@ set +eo pipefail
 
 echo "[00] Monitoring started"
 
-ETCD_SERVICE=http://dxgrid-discovery:2379
+ETCD_SERVICE=http://127.0.0.1:2379
 K8S_SVCACC_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 
 # Create directory /dsas
