@@ -1,12 +1,12 @@
 {
-	"kind": "Template",
 	"apiVersion": "v1",
+	"kind": "Template",
 	"metadata": {
-		"name": "dir-12-0-17-ga-forwardinc",
+		"name": "dir-12-0-18",
 		"creationTimestamp": null,
-		"namespace": "dir-12-0-17-ga",
+		"namespace": "dir-12-0-18",
 		"annotations": {
-			"description": "CA Directory 12.0.17.ga ForwardInc"
+			"description": "CA Directory 12.0.18"
 		}
 	},
 	"objects": [{
@@ -112,7 +112,7 @@
 					"volumes": [{
 						"name": "dxgrid-solution-vol",
 						"emptyDir": {
-							
+
 						}
 					},
 					{
@@ -129,10 +129,19 @@
 					}],
 					"containers": [{
 						"name": "dxgrid-data",
-						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.17.ga",
+						"image": "store.vapp-security.solutions/directory/dxgrid:12.0.18",
 						"resources": {
 							"requests": {
-								"cpu": "10m"
+								"cpu": "100m"
+							}
+						},
+						"lifecycle": {
+							"preStop": {
+								"exec": {
+									"command": ["dxserver",
+									"stop",
+									"all"]
+								}
 							}
 						},
 						"env": [{
@@ -180,11 +189,6 @@
 						"name": "dxgrid-configsvc",
 						"image": "store.vapp-security.solutions/vapp/sidecar-configsvc:latest",
 						"imagePullPolicy": "IfNotPresent",
-						"resources": {
-							"requests": {
-								"cpu": "10m"
-							}
-						},
 						"env": [{
 							"name": "KUBE_NAMESPACE",
 							"value": "${SOLUTION_NAMESPACE}"
@@ -195,7 +199,7 @@
 						},
 						{
 							"name": "SOURCE",
-							"value": "${DXGRID_SOLUTION_CONFIGURATION}"
+							"value": "${SOLUTION_CONFIGURATION}"
 						},
 						{
 							"name": "DESTINATION",
@@ -220,7 +224,10 @@
 						"imagePullPolicy": "IfNotPresent",
 						"resources": {
 							"requests": {
-								"cpu": "10m"
+								"cpu": "1m"
+							},
+							"limits": {
+								"cpu": "1m"
 							}
 						},
 						"env": [{
@@ -229,7 +236,7 @@
 						},
 						{
 							"name": "ELASTICSEARCH_HOST",
-							"value": "elasticsearch-logging.cluster"
+							"value": "elasticsearch-logging.kube-system"
 						},
 						{
 							"name": "ELASTICSEARCH_PORT",
@@ -280,7 +287,7 @@
 					"volumes": [{
 						"name": "discovery-solution-vol",
 						"emptyDir": {
-							
+
 						}
 					}],
 					"containers": [{
@@ -319,7 +326,7 @@
 						},
 						{
 							"name": "SOURCE",
-							"value": "${DXGRID_SOLUTION_CONFIGURATION}"
+							"value": "${SOLUTION_CONFIGURATION}"
 						},
 						{
 							"name": "DESTINATION",
@@ -393,13 +400,13 @@
 		}
 	}],
 	"parameters": [{
-		"description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration.",
+		"description": "The OAuth token is used to access your configuration in, say, Github. Change this token to a valid token to your configuration server if it requires OAuth authentication to access your custom configuration",
 		"name": "OAUTH_TOKEN",
 		"value": ""
 	},
 	{
-		"description": "URL of dxgrid configuration.",
-		"name": "DXGRID_SOLUTION_CONFIGURATION",
-		"value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.17.zip"
+		"description": "The URL of your configuration (default ForwardInc sample). Change this URL to use a custom configuration",
+		"name": "SOLUTION_CONFIGURATION",
+		"value": "https://github.com/ca-directory/vapp-config-forwardinc/archive/12.0.18.zip"
 	}]
 }
