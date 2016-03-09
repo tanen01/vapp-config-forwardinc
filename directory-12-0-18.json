@@ -236,7 +236,7 @@
 						},
 						{
 							"name": "ELASTICSEARCH_HOST",
-							"value": "elasticsearch-logging.kube-system"
+							"value": "elasticsearch-logging.cluster"
 						},
 						{
 							"name": "ELASTICSEARCH_PORT",
