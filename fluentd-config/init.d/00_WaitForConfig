@@ -1,0 +1,15 @@
+echo "[*] Waiting for config"
+
+CONFIGURED=/solution/.configured
+if [ ! -z "${DESTINATION_STATUS}" ]; then
+	CONFIGURED=${DESTINATION_STATUS}/.configured
+fi
+
+while [ ! -e "${CONFIGURED}" ]; do
+	echo "[*] ${CONFIGURED} does not exist yet"
+	sleep 5
+done
+
+myDsaNumber=$(cat ${CONFIGURED})
+
+echo "[*] myDsaNumber $myDsaNumber"

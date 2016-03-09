@@ -9,8 +9,10 @@ echo "[40] Check and get db"
 # dxgrid container exit, and not re-run this script. But for POD start/re-start, we would want
 # this script to run.
 LOADEDLDIF=/solution/.loadedldif
+CONFIGURED=/solution/.configured
 if [ ! -z "${DESTINATION_STATUS}" ]; then
 	LOADEDLDIF=${DESTINATION_STATUS}/.loadedldif
+	CONFIGURED=${DESTINATION_STATUS}/.configured
 fi
 if [ -e "$LOADEDLDIF" ]; then
 	return
@@ -151,5 +153,8 @@ if [ ! -e $DXHOME/data/dsa$myDsaNumber.db ]; then
 	dxloaddb -s dsa$myDsaNumber $DATAVOL/$LDIFFILE
 	dxdisp dsa$myDsaNumber
 fi
+
+echo $myDsaNumber > ${CONFIGURED}.tmp
+mv -f ${CONFIGURED}.tmp ${CONFIGURED}
 
 touch $LOADEDLDIF

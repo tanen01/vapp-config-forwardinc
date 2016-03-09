@@ -241,6 +241,10 @@
 						{
 							"name": "ELASTICSEARCH_PORT",
 							"value": "9200"
+						},
+						{
+							"name": "DESTINATION_STATUS",
+							"value": "/solution_status"
 						}],
 						"args": [],
 						"volumeMounts": [{
@@ -286,9 +290,11 @@
 					"dnsPolicy": "ClusterFirst",
 					"volumes": [{
 						"name": "discovery-solution-vol",
-						"emptyDir": {
-
-						}
+						"emptyDir": {}
+					},
+					{
+						"name": "discovery-etcd-vol",
+						"emptyDir": {}
 					}],
 					"containers": [{
 						"name": "dxgrid-bootstrap",
@@ -300,9 +306,17 @@
 						{
 							"name": "ETCD_NAME",
 							"value": "dxgrid-bootstrap"
+						},
+						{
+							"name": "ETCD_DATA_DIR",
+							"value": "/var/etcd/data"
 						}],
 						"ports": [{
 							"containerPort": 2379
+						}],
+						"volumeMounts": [{
+							"name": "discovery-etcd-vol",
+							"mountPath": "/var/etcd/data"
 						}],
 						"readinessProbe": {
 							"httpGet": {
